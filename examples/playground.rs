@@ -149,6 +149,8 @@ impl SpawnPlayer {
                 CharacterController::default(),
                 RigidBody::Kinematic,
                 Collider::cylinder(0.7, 1.8),
+                // For debugging
+                CollidingEntities::default(),
             ))
             .id();
         let camera = world
@@ -213,7 +215,7 @@ impl PlayerInput {
                 ),
                 (
                     Action::<Jump>::new(),
-                    bindings![KeyCode::Space, GamepadButton::South],
+                    bindings![KeyCode::Space,  GamepadButton::South],
                 ),
                 (
                     Action::<Crouch>::new(),
@@ -320,17 +322,28 @@ fn release_cursor(mut cursor: Single<&mut CursorOptions>) {
 
 fn update_debug_text(
     mut text: Single<&mut Text, With<DebugText>>,
-    kcc: Single<(&CharacterControllerState, &ColliderAabb), With<CharacterController>>,
+    kcc: Single<
+        (&CharacterControllerState, &CollidingEntities, &ColliderAabb),
+        With<CharacterController>,
+    >,
     camera: Single<&Transform, With<Camera>>,
     names: Query<NameOrEntity>,
 ) {
-    let (state, aabb) = kcc.into_inner();
+    let (state, colliding_entities, aabb) = kcc.into_inner();
     let velocity = state.velocity;
     let speed = velocity.length();
     let horizontal_speed = velocity.xz().length();
     let camera_position = camera.translation;
     let collisions = names
         .iter_many(state.touching_entities.iter())
+        .map(|name| {
+            name.name
+                .map(|n| format!("{} ({})", name.entity, n))
+                .unwrap_or_else(|| format!("{}", name.entity))
+        })
+        .collect::<Vec<_>>();
+    let real_collisions = names
+        .iter_many(colliding_entities.iter())
         .map(|name| {
             name.name
                 .map(|n| format!("{} ({})", name.entity, n))
@@ -346,7 +359,7 @@ fn update_debug_text(
                 .unwrap_or(format!("{}", name.entity))
         });
     text.0 = format!(
-        "Speed: {speed:.3}\nHorizontal Speed: {horizontal_speed:.3}\nVelocity: [{:.3}, {:.3}, {:.3}]\nCamera Position: [{:.3}, {:.3}, {:.3}]\nCollider Aabb:\n  min:[{:.3}, {:.3}, {:.3}]\n  max:[{:.3}, {:.3}, {:.3}]\nCollisions: {:#?}\nGround: {:?}",
+        "Speed: {speed:.3}\nHorizontal Speed: {horizontal_speed:.3}\nVelocity: [{:.3}, {:.3}, {:.3}]\nCamera Position: [{:.3}, {:.3}, {:.3}]\nCollider Aabb:\n  min:[{:.3}, {:.3}, {:.3}]\n  max:[{:.3}, {:.3}, {:.3}]\nReal Collisions: {:#?}\nCollisions: {:#?}\nGround: {:?}",
         velocity.x,
         velocity.y,
         velocity.z,
@@ -359,6 +372,7 @@ fn update_debug_text(
         aabb.max.x,
         aabb.max.y,
         aabb.max.z,
+        real_collisions,
         collisions,
         ground
     );
