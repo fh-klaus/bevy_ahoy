@@ -9,7 +9,7 @@ readme = "readme.md"
 repository = "https://github.com/janhohenheim/bevy_ahoy"
 keywords = ["kcc", "character", "controller", "source", "quake"]
 categories = ["game-development"]
-include = ["/src", "/license*"]
+include = ["/src", "/license*", "/examples"]
 
 
 [features]
