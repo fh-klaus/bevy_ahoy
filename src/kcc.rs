@@ -8,7 +8,7 @@ use bevy_ecs::{
 };
 use core::time::Duration;
 use std::sync::Arc;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::{input::AccumulatedInput, prelude::*};
 
@@ -445,7 +445,7 @@ fn stay_on_ground(
     let up_dist = hit.map(|h| h.distance).unwrap_or(cast_len);
     let start = transform.translation + cast_dir * up_dist;
     let cast_dir = Vec3::NEG_Y;
-    let cast_len = ctx.cfg.step_size;
+    let cast_len = up_dist + ctx.cfg.step_size;
 
     let hit = move_and_slide.cast_move(
         state.collider(),
@@ -458,7 +458,7 @@ fn stay_on_ground(
     let Some(hit) = hit else {
         return;
     };
-    if hit.intersects() || hit.normal1.y >= ctx.cfg.min_walk_cos {
+    if hit.intersects() || hit.normal1.y < ctx.cfg.min_walk_cos {
         return;
     }
     transform.translation += cast_dir * hit.distance;
