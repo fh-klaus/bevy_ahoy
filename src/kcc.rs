@@ -205,7 +205,7 @@ fn run_kcc(
         start_gravity(&mut state, &ctx);
 
         if input.jumped {
-            check_jump_button(&mut state, &ctx);
+            handle_jump(&mut state, &ctx);
         }
 
         // Fricion is handled before we add in any base velocity. That way, if we are on a conveyor,
@@ -215,7 +215,7 @@ fn run_kcc(
             friction(&mut state, &ctx);
         }
 
-        check_velocity(&mut state, &ctx);
+        validate_velocity(&mut state, &ctx);
 
         let wish_velocity = calculate_wish_velocity(&state, &ctx);
         if state.grounded.is_some() {
@@ -237,7 +237,7 @@ fn run_kcc(
         }
 
         categorize_position(&mut transform, &move_and_slide, &mut state, &ctx);
-        check_velocity(&mut state, &ctx);
+        validate_velocity(&mut state, &ctx);
 
         finish_gravity(&mut state, &ctx);
 
@@ -245,7 +245,6 @@ fn run_kcc(
             state.velocity.y = 0.0;
         }
         // TODO: check_falling();
-        dejitter_output(&mut transform, original_transform);
     }
 }
 
@@ -260,7 +259,7 @@ fn air_move(
 
     state.velocity += state.base_velocity;
 
-    try_player_move(transform, move_and_slide, state, ctx);
+    move_character(transform, move_and_slide, state, ctx);
 
     state.velocity -= state.base_velocity;
 }
@@ -362,7 +361,7 @@ fn step_move(
     let original_velocity = state.velocity;
 
     // Slide the direct path
-    try_player_move(transform, move_and_slide, state, ctx);
+    move_character(transform, move_and_slide, state, ctx);
 
     let down_touching_entities = state.touching_entities.clone();
     let down_position = transform.translation;
@@ -388,7 +387,7 @@ fn step_move(
     transform.translation += cast_dir * dist;
 
     // try to slide from upstairs
-    try_player_move(transform, move_and_slide, state, ctx);
+    move_character(transform, move_and_slide, state, ctx);
 
     let cast_dir = Dir3::NEG_Y;
     let hit = move_and_slide.cast_move(
@@ -431,7 +430,7 @@ fn step_move(
     }
 }
 
-fn try_player_move(
+fn move_character(
     transform: &mut Transform,
     move_and_slide: &MoveAndSlide,
     state: &mut CharacterControllerState,
@@ -601,7 +600,7 @@ fn friction(state: &mut CharacterControllerState, ctx: &Ctx) {
     }
 }
 
-fn check_jump_button(state: &mut CharacterControllerState, ctx: &Ctx) {
+fn handle_jump(state: &mut CharacterControllerState, ctx: &Ctx) {
     if state.grounded.is_none() {
         return;
     }
@@ -630,15 +629,15 @@ fn start_gravity(state: &mut CharacterControllerState, ctx: &Ctx) {
     state.velocity.y += (state.base_velocity.y - ctx.cfg.gravity * 0.5) * ctx.dt;
     state.base_velocity.y = 0.0;
 
-    check_velocity(state, ctx);
+    validate_velocity(state, ctx);
 }
 
 fn finish_gravity(state: &mut CharacterControllerState, ctx: &Ctx) {
     state.velocity.y -= ctx.cfg.gravity * 0.5 * ctx.dt;
-    check_velocity(state, ctx);
+    validate_velocity(state, ctx);
 }
 
-fn check_velocity(state: &mut CharacterControllerState, ctx: &Ctx) {
+fn validate_velocity(state: &mut CharacterControllerState, ctx: &Ctx) {
     for i in 0..3 {
         if !state.velocity[i].is_finite() {
             warn!(
@@ -680,17 +679,6 @@ fn calculate_wish_velocity(state: &CharacterControllerState, ctx: &Ctx) -> Vec3 
         ctx.cfg.speed
     };
     wish_dir * speed
-}
-
-fn dejitter_output(transform: &mut Transform, original_transform: Transform) {
-    const EPSILON: f32 = 0.0005;
-
-    for i in 0..3 {
-        let delta_pos = original_transform.translation - transform.translation;
-        if delta_pos[i].abs() < EPSILON {
-            transform.translation[i] = original_transform.translation[i];
-        }
-    }
 }
 
 fn check_duck(
