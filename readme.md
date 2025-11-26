@@ -1,8 +1,22 @@
 # Bevy Ahoy!
 
-A cool KCC, heck yeah
+[![crates.io](https://img.shields.io/crates/v/bevy_ahoy)](https://crates.io/crates/bevy_ahoy)
+[![docs.rs](https://docs.rs/bevy_ahoy/badge.svg)](https://docs.rs/bevy_ahoy)
+
+A cool KCC for Avian, heck yeah
 
 I'll write more here later :)
+
+## Inspiration
+
+- The underlying move-and-slide uses Avian's implementation, the ispirations for which are [listed in the implementing PR](https://github.com/avianphysics/avian/pull/894).
+- The core principles of the KCC derive from the Quake KCC. I highly recommend reading [myria666/qMovementDoc](https://github.com/myria666/qMovementDoc) if you want to know how it works :)
+- The specific implementation flavor of the KCC is heavily inspired by Counter Strike: Source
+
+## Alternatives / Comparison
+
+- [tnua](https://github.com/idanarye/bevy-tnua): Floating dynamic character controller. Use this if you want more cartoony physics, or want your character to be affected by forces in a fully simulated way. Supports both Avian and Rapier.
+- [bevy_fps_controller](https://github.com/qhdwight/bevy_fps_controller): KCC also inspired by Source. Does not integrate with BEI or with fixed update based workflows. Supports both Avian and Rapier.
 
 ## Design Philosophy
 
@@ -44,3 +58,10 @@ In contrast, here are some deliberate non-goals:
 - Other up-axis than Y
 - Work as a dynamic character controller
 - Support every possible collider shape
+- Reproduce the behavior of Quake or Source exactly.
+
+## Compatibility
+
+| bevy        | bevy_bae               |
+|-------------|------------------------|
+| 0.17        | `main`                 |
