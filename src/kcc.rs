@@ -28,6 +28,7 @@ pub(super) fn plugin(schedule: Interned<dyn ScheduleLabel>) -> impl Fn(&mut App)
     Collider = Collider::cylinder(0.7, 1.8),
     CustomPositionIntegration,
     Transform,
+    SpeculativeMargin::ZERO,
 )]
 #[component(on_add=CharacterController::on_add)]
 pub struct CharacterController {
