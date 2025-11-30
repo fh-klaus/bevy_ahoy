@@ -45,6 +45,7 @@ fn main() -> AppExit {
                 release_cursor.run_if(input_just_pressed(KeyCode::Escape)),
             ),
         )
+        .add_systems(FixedUpdate, move_trains)
         .add_observer(spawn_player)
         .run()
 }
@@ -238,4 +239,50 @@ enum CollisionLayer {
     Default,
     Player,
     Prop,
+}
+
+#[solid_class(base(Transform, Visibility))]
+#[derive(Default)]
+#[require(RigidBody::Kinematic, GlobalTransform)]
+struct FuncTrain {
+    target: String,
+    speed: f32,
+}
+
+#[point_class(base(Transform, Visibility))]
+#[derive(Default)]
+#[require(GlobalTransform)]
+struct PathCorner {
+    #[class(must_set)]
+    targetname: String,
+    target: String,
+}
+
+fn move_trains(
+    mut trains: Query<(&GlobalTransform, &mut LinearVelocity, &mut FuncTrain)>,
+    corners: Query<(&GlobalTransform, &PathCorner)>,
+) {
+    for (train_transform, mut train_vel, mut train) in &mut trains {
+        if train.target.is_empty() {
+            continue;
+        }
+        let Some((corner_transform, corner)) = corners
+            .iter()
+            .find(|(_, corner)| corner.targetname == train.target)
+        else {
+            error!("PathCorner not found for target: {}", train.target);
+            continue;
+        };
+        if train_transform
+            .translation()
+            .distance_squared(corner_transform.translation())
+            < 0.1
+        {
+            train.target = corner.target.clone();
+            continue;
+        }
+
+        let to_corner = corner_transform.translation() - train_transform.translation();
+        train_vel.0 = to_corner.normalize_or_zero() * train.speed;
+    }
 }

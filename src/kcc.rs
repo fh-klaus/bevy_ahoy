@@ -31,6 +31,8 @@ fn run_kcc(
     cams: Query<&Transform, Without<CharacterController>>,
     time: Res<Time>,
     move_and_slide: MoveAndSlide,
+    // TODO: allow this to be other KCCs
+    colliders: Query<&LinearVelocity, Without<CharacterController>>,
 ) {
     for (cfg, mut state, mut input, mut transform, mut velocity, cam) in &mut kccs {
         state.touching_entities.clear();
@@ -47,6 +49,11 @@ fn run_kcc(
             dt: time.delta_secs(),
             dt_duration: time.delta(),
         };
+        if let Some(grounded) = state.grounded {
+            if let Ok(vel) = colliders.get(grounded.entity) {
+                state.base_velocity = vel.0;
+            }
+        }
         depenetrate_character(&mut transform, &move_and_slide, &state, &ctx);
 
         update_grounded(&transform, &velocity, &move_and_slide, &mut state, &ctx);
