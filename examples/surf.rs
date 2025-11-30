@@ -70,7 +70,7 @@ fn main() -> AppExit {
             ExampleUtilPlugin,
         ))
         .add_input_context::<PlayerInput>()
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, setup_velocity_text))
         .add_observer(spawn_player)
         .add_observer(setup_time)
         .add_observer(reset_time)
@@ -80,6 +80,7 @@ fn main() -> AppExit {
                 capture_cursor.run_if(input_just_pressed(MouseButton::Left)),
                 release_cursor.run_if(input_just_pressed(KeyCode::Escape)),
                 update_time,
+                update_velocity_text,
             ),
         )
         .run()
@@ -294,4 +295,36 @@ fn update_time(mut time_texts: Query<(&mut Text, &mut TimeText)>, time: Res<Time
 
 fn reset_time(_reset: On<Fire<util::Reset>>, mut stopwatch: Single<&mut TimeText>) {
     stopwatch.reset();
+}
+
+fn setup_velocity_text(mut commands: Commands) {
+    commands.spawn((
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        children![(
+            Node {
+                top: px(75.0),
+                ..default()
+            },
+            Text::default(),
+            TextColor(Color::WHITE.with_alpha(0.5)),
+            VelocityText
+        )],
+    ));
+}
+
+#[derive(Component, Reflect, Debug)]
+#[reflect(Component)]
+pub(crate) struct VelocityText;
+
+fn update_velocity_text(
+    mut text: Single<&mut Text, With<VelocityText>>,
+    velocity: Single<&LinearVelocity, With<CharacterController>>,
+) {
+    text.0 = format!("{:.3}", velocity.xz().length());
 }
