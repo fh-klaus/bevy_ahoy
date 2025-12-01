@@ -558,13 +558,13 @@ fn calculate_platform_movement(
         .with_rotation(Quat::from_scaled_axis(ground_ang_vel.0 * ctx.dt) * ground_rot.0);
     let mut touch_point = kcc_transform.translation;
     touch_point.y = ground.point1.y;
-    let kcc_movement = next_platform_transform.transform_point(
+
+    next_platform_transform.transform_point(
         platform_transform
             .compute_affine()
             .inverse()
             .transform_point3(touch_point),
-    ) - touch_point;
-    kcc_movement
+    ) - touch_point
 }
 
 fn friction(velocity: &mut Vec3, state: &CharacterControllerState, ctx: &Ctx) {
