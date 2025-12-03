@@ -33,16 +33,17 @@ fn main() -> AppExit {
 }
 
 fn setup(mut commands: Commands, assets: Res<AssetServer>) {
-    // Player
+    // Spawn the player
     let player = commands
         .spawn((
-            // The character controller configuration
+            // Add the character controller configuration. We'll use the default settings for now.
             CharacterController::default(),
-            // Configure inputs
+            // Configure inputs. The actions `Movement`, `Jump`, etc. are provided by Ahoy, you just need to bind them.
             PlayerInput,
             actions!(PlayerInput[
                 (
                     Action::<Movement>::new(),
+                    // Normalize the input vector
                     DeadZone::default(),
                     Bindings::spawn((
                         Cardinal::wasd_keys(),
@@ -59,6 +60,7 @@ fn setup(mut commands: Commands, assets: Res<AssetServer>) {
                 ),
                 (
                     Action::<RotateCamera>::new(),
+                    // Tweak the mouse sensitivity here
                     Scale::splat(0.05),
                     Bindings::spawn((
                         Spawn(Binding::mouse_motion()),
@@ -70,14 +72,14 @@ fn setup(mut commands: Commands, assets: Res<AssetServer>) {
         ))
         .id();
 
-    // Camera
+    // Spawn the player camera
     commands.spawn((
         Camera3d::default(),
-        // Enable optional builtin camera controller
+        // Enable the optional builtin camera controller
         CharacterControllerCameraOf::new(player),
     ));
 
-    // Light
+    // Spawn a directional light
     commands.spawn((
         Transform::from_xyz(0.0, 1.0, 0.0).looking_at(vec3(1.0, -2.0, -2.0), Vec3::Y),
         DirectionalLight {
@@ -86,7 +88,9 @@ fn setup(mut commands: Commands, assets: Res<AssetServer>) {
         },
     ));
 
-    // Level
+    // Spawn the level. This can be done in whatever way you prefer: spawn individual colliders, load a scene, use Skein, use bevy_trenchbroom, etc.
+    // Ahoy will deal with it all.
+    // Here we load a glTF file and create a convex hull collider for each mesh.
     commands.spawn((
         SceneRoot(assets.load("maps/playground.glb#Scene0")),
         RigidBody::Static,
