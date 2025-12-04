@@ -131,14 +131,7 @@ fn ground_move(wish_velocity: Vec3, time: &Time, move_and_slide: &MoveAndSlide, 
     let mut movement = ctx.velocity.0 * time.delta_secs();
     movement.y = 0.0;
 
-    let hit = move_and_slide.cast_move(
-        ctx.state.collider(),
-        ctx.transform.translation,
-        ctx.transform.rotation,
-        movement,
-        ctx.cfg.move_and_slide.skin_width,
-        &ctx.cfg.filter,
-    );
+    let hit = cast_move(movement, move_and_slide, ctx);
 
     if hit.is_none() {
         ctx.transform.translation += movement;
@@ -244,26 +237,16 @@ fn step_move(step_height: f32, time: &Time, move_and_slide: &MoveAndSlide, ctx: 
     let cast_dir = Dir3::Y;
     let cast_len = step_height;
 
-    let hit = move_and_slide.cast_move(
-        ctx.state.collider(),
-        ctx.transform.translation,
-        ctx.transform.rotation,
-        cast_dir * cast_len,
-        ctx.cfg.move_and_slide.skin_width,
-        &ctx.cfg.filter,
-    );
+    let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
 
     let dist = hit.map(|hit| hit.distance).unwrap_or(cast_len);
     ctx.transform.translation += cast_dir * dist;
 
     // Verify we have enough space to stand
-    let hit = move_and_slide.cast_move(
-        ctx.state.collider(),
-        ctx.transform.translation,
-        ctx.transform.rotation,
+    let hit = cast_move(
         ctx.velocity.normalize_or_zero() * ctx.cfg.min_step_ledge_space,
-        ctx.cfg.move_and_slide.skin_width,
-        &ctx.cfg.filter,
+        move_and_slide,
+        ctx,
     );
     if hit.is_some() {
         ctx.transform.translation = down_position;
@@ -276,14 +259,7 @@ fn step_move(step_height: f32, time: &Time, move_and_slide: &MoveAndSlide, ctx: 
     move_character(time, move_and_slide, ctx);
 
     let cast_dir = Dir3::NEG_Y;
-    let hit = move_and_slide.cast_move(
-        ctx.state.collider(),
-        ctx.transform.translation,
-        ctx.transform.rotation,
-        cast_dir * cast_len,
-        ctx.cfg.move_and_slide.skin_width,
-        &ctx.cfg.filter,
-    );
+    let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
 
     // If we either fall or slide, use the direct slide instead
     if !hit.is_some_and(|h| h.normal1.y >= ctx.cfg.min_walk_cos || ctx.cfg.step_into_air) {
@@ -340,27 +316,18 @@ fn snap_to_ground(move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) {
     let cast_dir = Vec3::Y;
     let cast_len = ctx.cfg.ground_distance;
 
-    let hit = move_and_slide.cast_move(
-        ctx.state.collider(),
-        ctx.transform.translation,
-        ctx.transform.rotation,
-        cast_dir * cast_len,
-        ctx.cfg.move_and_slide.skin_width,
-        &ctx.cfg.filter,
-    );
+    let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
     let up_dist = hit.map(|h| h.distance).unwrap_or(cast_len);
     let start = ctx.transform.translation + cast_dir * up_dist;
     let cast_dir = Vec3::NEG_Y;
     let cast_len = up_dist + ctx.cfg.step_size;
 
-    let hit = move_and_slide.cast_move(
-        ctx.state.collider(),
-        start,
-        ctx.transform.rotation,
-        cast_dir * cast_len,
-        ctx.cfg.move_and_slide.skin_width,
-        &ctx.cfg.filter,
-    );
+    let orig_pos = ctx.transform.translation;
+
+    ctx.transform.translation = start;
+    let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
+    ctx.transform.translation = orig_pos;
+
     let Some(hit) = hit else {
         return;
     };
@@ -404,14 +371,7 @@ fn update_grounded(
         } else {
             ctx.cfg.ground_distance
         };
-        let hit = move_and_slide.cast_move(
-            ctx.state.collider(),
-            ctx.transform.translation,
-            ctx.transform.rotation,
-            cast_dir * cast_dist,
-            ctx.cfg.move_and_slide.skin_width,
-            &ctx.cfg.filter,
-        );
+        let hit = cast_move(cast_dir * cast_dist, move_and_slide, ctx);
         if let Some(hit) = hit
             && hit.normal1.y >= ctx.cfg.min_walk_cos
         {
@@ -422,6 +382,21 @@ fn update_grounded(
         }
     }
     // TODO: fire ground changed event
+}
+
+fn cast_move(
+    movement: Vec3,
+    move_and_slide: &MoveAndSlide,
+    ctx: &mut CtxItem,
+) -> Option<MoveHitData> {
+    move_and_slide.cast_move(
+        ctx.state.collider(),
+        ctx.transform.translation,
+        ctx.transform.rotation,
+        movement,
+        ctx.cfg.move_and_slide.skin_width,
+        &ctx.cfg.filter,
+    )
 }
 
 fn set_grounded(
