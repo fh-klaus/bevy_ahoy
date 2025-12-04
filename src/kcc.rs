@@ -51,6 +51,8 @@ fn run_kcc(
 ) {
     let mut colliders = colliders.transmute_lens_inner();
     let colliders = colliders.query();
+    let mut cams = cams.transmute_lens_inner();
+    let cams = cams.query();
     for mut ctx in &mut kccs {
         ctx.state.touching_entities.clear();
         ctx.state.last_ground.tick(time.delta());
@@ -68,6 +70,18 @@ fn run_kcc(
 
         handle_jump(&time, &colliders, &mut ctx);
 
+        /*
+        *  if ctx
+            .input
+            .craned
+            .as_ref()
+            .is_some_and(|c| c.elapsed() < ctx.cfg.jump_input_buffer)
+        {
+            ctx.input.craned = None;
+            step_move(ctx.cfg.crane_height, time, move_and_slide, ctx);
+        }
+        */
+
         handle_mantle(&time, &colliders, &move_and_slide, &mut ctx);
 
         // Friction is handled before we add in any base velocity. That way, if we are on a conveyor,
@@ -79,11 +93,7 @@ fn run_kcc(
 
         validate_velocity(&mut ctx);
 
-        let orientation = ctx
-            .cam
-            .and_then(|e| cams.get(e.get()).copied().ok())
-            .unwrap_or(*ctx.transform);
-        let wish_velocity = calculate_wish_velocity(orientation, &ctx);
+        let wish_velocity = calculate_wish_velocity(&cams, &ctx);
         if ctx.state.grounded.is_some() {
             ground_move(wish_velocity, &time, &move_and_slide, &mut ctx);
         } else {
@@ -141,19 +151,8 @@ fn ground_move(wish_velocity: Vec3, time: &Time, move_and_slide: &MoveAndSlide, 
         return;
     };
 
-    let step_height = if ctx
-        .input
-        .craned
-        .as_ref()
-        .is_some_and(|c| c.elapsed() < ctx.cfg.jump_input_buffer)
-    {
-        ctx.input.craned = None;
-        ctx.cfg.crane_height
-    } else {
-        ctx.cfg.step_size
-    };
+    step_move(time, move_and_slide, ctx);
 
-    step_move(step_height, time, move_and_slide, ctx);
     ctx.velocity.0 -= ctx.state.base_velocity;
     snap_to_ground(move_and_slide, ctx);
 }
@@ -181,17 +180,8 @@ fn air_move(wish_velocity: Vec3, time: &Time, move_and_slide: &MoveAndSlide, ctx
     air_accelerate(wish_velocity, ctx.cfg.air_acceleration_hz, time, ctx);
 
     ctx.velocity.0 += ctx.state.base_velocity;
-    if ctx
-        .input
-        .craned
-        .as_ref()
-        .is_some_and(|c| c.elapsed() < ctx.cfg.jump_input_buffer)
-    {
-        ctx.input.craned = None;
-        step_move(ctx.cfg.crane_height, time, move_and_slide, ctx);
-    } else {
-        step_move(ctx.cfg.step_size, time, move_and_slide, ctx);
-    }
+
+    step_move(time, move_and_slide, ctx);
 
     ctx.velocity.0 -= ctx.state.base_velocity;
 }
@@ -217,7 +207,7 @@ fn air_accelerate(wish_velocity: Vec3, acceleration_hz: f32, time: &Time, ctx: &
     ctx.velocity.0 += accel_speed * wish_dir;
 }
 
-fn step_move(step_height: f32, time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) {
+fn step_move(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) {
     let original_position = ctx.transform.translation;
     let original_velocity = ctx.velocity.0;
     let original_touching_entities = ctx.state.touching_entities.clone();
@@ -235,7 +225,7 @@ fn step_move(step_height: f32, time: &Time, move_and_slide: &MoveAndSlide, ctx: 
 
     // step up
     let cast_dir = Dir3::Y;
-    let cast_len = step_height;
+    let cast_len = ctx.cfg.step_size;
 
     let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
 
@@ -550,7 +540,12 @@ fn validate_velocity(ctx: &mut CtxItem) {
     ctx.velocity.0 = ctx.velocity.clamp_length(0.0, ctx.cfg.max_speed);
 }
 
-fn calculate_wish_velocity(orientation: Transform, ctx: &CtxItem) -> Vec3 {
+fn calculate_wish_velocity(cams: &Query<&Transform>, ctx: &CtxItem) -> Vec3 {
+    let orientation = ctx
+        .cam
+        .and_then(|e| cams.get(e.get()).copied().ok())
+        .unwrap_or(*ctx.transform);
+
     let movement = ctx.input.last_movement.unwrap_or_default();
     let mut forward = Vec3::from(orientation.forward());
     forward.y = 0.0;
