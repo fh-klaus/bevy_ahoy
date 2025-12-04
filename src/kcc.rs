@@ -314,7 +314,7 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
     let up_dist = hit.map(|hit| hit.distance).unwrap_or(cast_len);
     ctx.transform.translation += cast_dir * up_dist;
 
-    // Move onto ledge
+    // Move onto ledge (penetration explicitly allowed since the ledge can be below a wall)
     ctx.transform.translation += -wall_hit.normal1 * ctx.cfg.min_step_ledge_space;
 
     // Move down
@@ -345,7 +345,6 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
 
     // step up
     ctx.transform.translation.y += crane_height;
-    depenetrate_character(move_and_slide, ctx);
 
     // try to slide from upstairs
     move_character(time, move_and_slide, ctx);
