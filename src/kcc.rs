@@ -297,17 +297,17 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
     let cast_len = ctx.cfg.crane_height;
 
     let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
-    info!(?hit);
 
     let up_dist = hit.map(|hit| hit.distance).unwrap_or(cast_len);
     ctx.transform.translation += cast_dir * up_dist;
 
     // Move onto ledge
-    ctx.transform.translation += vel_dir * ctx.cfg.min_step_ledge_space.max(speed);
+    ctx.transform.translation +=
+        vel_dir * ctx.cfg.min_step_ledge_space.max(speed * time.delta_secs());
 
     // Move down
     let cast_dir = Dir3::NEG_Y;
-    let cast_len = up_dist - ctx.cfg.step_size;
+    let cast_len = up_dist - ctx.cfg.step_size + ctx.cfg.move_and_slide.skin_width;
     let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
     let Some(hit) = hit else {
         info!(?original_position, pos=?ctx.transform.translation, ?cast_len, ?vel_dir, vel=?ctx.velocity.0, ?hit);
@@ -317,18 +317,11 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
         info!("d");
         return false;
     };
-    if hit.intersects() {
-        ctx.transform.translation = original_position;
-        ctx.velocity.0 = original_velocity;
-        ctx.state.crouching = original_crouching;
-        info!("d+_");
-        return false;
-    }
     let crane_height = up_dist - hit.distance;
 
     // Validate step back
     let cast_dir = -vel_dir;
-    let cast_len = ctx.cfg.min_step_ledge_space.max(speed);
+    let cast_len = ctx.cfg.min_step_ledge_space.max(speed * time.delta_secs());
     let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
     if hit.is_some() {
         ctx.transform.translation = original_position;
