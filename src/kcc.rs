@@ -170,6 +170,7 @@ fn air_move(wish_velocity: Vec3, time: &Time, move_and_slide: &MoveAndSlide, ctx
     if !handle_crane(time, move_and_slide, ctx) {
         ctx.velocity.0 = original_velocity;
         air_accelerate(wish_velocity, ctx.cfg.air_acceleration_hz, time, ctx);
+        ctx.velocity.0 += ctx.state.base_velocity;
         step_move(time, move_and_slide, ctx);
     }
 
