@@ -261,7 +261,7 @@ fn step_move(step_height: f32, time: &Time, move_and_slide: &MoveAndSlide, ctx: 
     let cast_dir = Dir3::NEG_Y;
     let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
 
-    // If we either fall or slide, use the direct slide instead
+    // If we either fall or slide down, use the direct move-and-slide instead
     if !hit.is_some_and(|h| h.normal1.y >= ctx.cfg.min_walk_cos) {
         ctx.transform.translation = down_position;
         ctx.velocity.0 = down_velocity;
