@@ -1,4 +1,4 @@
-use avian3d::character_controller::move_and_slide::MoveHitData;
+use avian3d::character_controller::move_and_slide::{self, MoveHitData};
 use bevy_ecs::{intern::Interned, schedule::ScheduleLabel};
 use core::time::Duration;
 use tracing::warn;
@@ -84,6 +84,16 @@ fn run_kcc(
             &ctx,
         );
 
+        handle_mantle(
+            *transform,
+            &mut velocity,
+            &mut input,
+            colliders,
+            &move_and_slide,
+            &mut state,
+            &ctx,
+        );
+
         // Friction is handled before we add in any base velocity. That way, if we are on a conveyor,
         //  we don't slow when standing still, relative to the conveyor.
         if state.grounded.is_some() {
@@ -100,6 +110,7 @@ fn run_kcc(
                 &mut velocity,
                 wish_velocity,
                 &move_and_slide,
+                &mut input,
                 &mut state,
                 &ctx,
             );
@@ -109,6 +120,7 @@ fn run_kcc(
                 &mut velocity,
                 wish_velocity,
                 &move_and_slide,
+                &mut input,
                 &mut state,
                 &ctx,
             );
@@ -155,11 +167,10 @@ fn ground_move(
     velocity: &mut Vec3,
     wish_velocity: Vec3,
     move_and_slide: &MoveAndSlide,
+    input: &mut AccumulatedInput,
     state: &mut CharacterControllerState,
     ctx: &Ctx,
 ) {
-    let old_grounded = state.grounded;
-
     velocity.y = 0.0;
     ground_accelerate(velocity, wish_velocity, ctx.cfg.acceleration_hz, ctx);
     velocity.y = 0.0;
@@ -193,14 +204,19 @@ fn ground_move(
         return;
     };
 
-    // Don't walk up stairs if not on ground.
-    if old_grounded.is_none() && !ctx.cfg.step_from_air {
-        *velocity -= state.base_velocity;
-        return;
-    }
+    let step_height = if ctx
+        .input
+        .craned
+        .as_ref()
+        .is_some_and(|c| c.elapsed() < ctx.cfg.jump_input_buffer)
+    {
+        input.craned = None;
+        ctx.cfg.crane_height
+    } else {
+        ctx.cfg.step_size
+    };
 
-    step_move(transform, velocity, move_and_slide, state, ctx);
-
+    step_move(step_height, transform, velocity, move_and_slide, state, ctx);
     *velocity -= state.base_velocity;
     snap_to_ground(transform, move_and_slide, state, ctx);
 }
@@ -229,17 +245,37 @@ fn air_move(
     velocity: &mut Vec3,
     wish_velocity: Vec3,
     move_and_slide: &MoveAndSlide,
+    input: &mut AccumulatedInput,
     state: &mut CharacterControllerState,
     ctx: &Ctx,
 ) {
     air_accelerate(velocity, wish_velocity, ctx.cfg.air_acceleration_hz, ctx);
 
     *velocity += state.base_velocity;
-
-    if ctx.cfg.step_from_air {
-        step_move(transform, velocity, move_and_slide, state, ctx);
+    if ctx
+        .input
+        .craned
+        .as_ref()
+        .is_some_and(|c| c.elapsed() < ctx.cfg.jump_input_buffer)
+    {
+        input.craned = None;
+        step_move(
+            ctx.cfg.crane_height,
+            transform,
+            velocity,
+            move_and_slide,
+            state,
+            ctx,
+        );
     } else {
-        move_character(transform, velocity, move_and_slide, state, ctx);
+        step_move(
+            ctx.cfg.step_size,
+            transform,
+            velocity,
+            move_and_slide,
+            state,
+            ctx,
+        );
     }
 
     *velocity -= state.base_velocity;
@@ -267,6 +303,7 @@ fn air_accelerate(velocity: &mut Vec3, wish_velocity: Vec3, acceleration_hz: f32
 }
 
 fn step_move(
+    step_height: f32,
     transform: &mut Transform,
     velocity: &mut Vec3,
     move_and_slide: &MoveAndSlide,
@@ -290,7 +327,7 @@ fn step_move(
 
     // step up
     let cast_dir = Dir3::Y;
-    let cast_len = ctx.cfg.step_size;
+    let cast_len = step_height;
 
     let hit = move_and_slide.cast_move(
         state.collider(),
@@ -354,7 +391,7 @@ fn step_move(
         *velocity = down_velocity;
         state.touching_entities = down_touching_entities;
     } else {
-        velocity.y = down_velocity.y;
+        velocity.y = f32::min(down_velocity.y, 0.0);
         state.last_step_up.reset();
     }
 }
@@ -616,6 +653,79 @@ fn handle_jump(
         return;
     }
     input.jumped = None;
+    set_grounded(transform, None, velocity, colliders, state, ctx);
+    state.last_ground.set_elapsed(ctx.cfg.coyote_time);
+
+    // TODO: read ground's jump factor
+    let ground_factor = 1.0;
+    // d = 0.5 * g * t^2		- distance traveled with linear accel
+    // t = sqrt(2.0 * 45 / g)	- how long to fall 45 units
+    // v = g * t				- velocity at the end (just invert it to jump up that high)
+    // v = g * sqrt(2.0 * 45 / g )
+    // v^2 = g * g * 2.0 * 45 / g
+    // v = sqrt( g * 2.0 * 45 )
+    let fl_mul = (2.0 * ctx.cfg.gravity * ctx.cfg.jump_height).sqrt();
+    velocity.y = ground_factor * fl_mul;
+
+    // TODO: Trigger jump event
+}
+
+#[expect(unused_variables, unreachable_code)]
+fn handle_mantle(
+    transform: Transform,
+    velocity: &mut Vec3,
+    input: &mut AccumulatedInput,
+    colliders: Query<
+        (
+            &LinearVelocity,
+            &AngularVelocity,
+            &ComputedCenterOfMass,
+            &Position,
+            &Rotation,
+        ),
+        Without<CharacterController>,
+    >,
+    move_and_slide: &MoveAndSlide,
+    state: &mut CharacterControllerState,
+    ctx: &Ctx,
+) {
+    let Some(mantle_time) = input.mantled.clone() else {
+        return;
+    };
+    if mantle_time.elapsed() > ctx.cfg.mantle_input_buffer {
+        return;
+    }
+    return;
+    // High level overview:
+    // - move cast up
+    // - translate a bit with horizontal movement
+    // - move cast down
+    // - move cast a bit back
+    let cast_dir = Vec3::Y;
+    let cast_dist = ctx.cfg.max_mantle_dist;
+    let mut move_transform = transform;
+    let hit = move_and_slide.cast_move(
+        state.collider(),
+        move_transform.translation,
+        move_transform.rotation,
+        cast_dir * cast_dist,
+        ctx.cfg.move_and_slide.skin_width,
+        &ctx.cfg.filter,
+    );
+    let dist = hit.map(|h| h.distance).unwrap_or(cast_dist);
+    move_transform.translation += cast_dir * dist;
+
+    let cast_dir = Dir3::new(vec3(velocity.x, 0.0, velocity.z)).unwrap_or(move_transform.forward());
+    let cast_dist = ctx.cfg.max_mantle_dist;
+    let hit = move_and_slide.cast_move(
+        state.collider(),
+        move_transform.translation,
+        move_transform.rotation,
+        cast_dir * cast_dist,
+        ctx.cfg.move_and_slide.skin_width,
+        &ctx.cfg.filter,
+    );
+
     set_grounded(transform, None, velocity, colliders, state, ctx);
     state.last_ground.set_elapsed(ctx.cfg.coyote_time);
 

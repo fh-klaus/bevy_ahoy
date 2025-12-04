@@ -145,6 +145,22 @@ impl PlayerInput {
                     ],
                 ),
                 (
+                    Action::<Crane>::new(),
+                    Press::default(),
+                    bindings![
+                        KeyCode::Space,
+                        GamepadButton::South,
+                    ],
+                ),
+                (
+                    Action::<Mantle>::new(),
+                    Hold::new(0.2),
+                    bindings![
+                        KeyCode::Space,
+                        GamepadButton::South,
+                    ],
+                ),
+                (
                     Action::<Crouch>::new(),
                     bindings![KeyCode::ControlLeft, GamepadButton::LeftTrigger],
                 ),

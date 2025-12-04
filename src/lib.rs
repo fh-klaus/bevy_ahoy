@@ -18,7 +18,10 @@ pub mod prelude {
     pub use crate::{
         AhoyPlugin, AhoySystems, CharacterController, PickupConfig,
         camera::{CharacterControllerCamera, CharacterControllerCameraOf},
-        input::{Crouch, DropObject, Jump, Movement, PullObject, RotateCamera, ThrowObject},
+        input::{
+            Crane, Crouch, DropObject, Jump, Mantle, Movement, PullObject, RotateCamera,
+            ThrowObject,
+        },
         pickup,
     };
 }
@@ -131,6 +134,7 @@ pub struct CharacterController {
     pub air_acceleration_hz: f32,
     pub gravity: f32,
     pub step_size: f32,
+    pub crane_height: f32,
     pub crouch_speed_scale: f32,
     pub speed: f32,
     pub air_speed: f32,
@@ -141,9 +145,11 @@ pub struct CharacterController {
     pub unground_speed: f32,
     pub coyote_time: Duration,
     pub jump_input_buffer: Duration,
-    pub step_from_air: bool,
+    pub crane_input_buffer: Duration,
+    pub mantle_input_buffer: Duration,
     pub step_into_air: bool,
     pub min_step_ledge_space: f32,
+    pub max_mantle_dist: f32,
 }
 
 impl Default for CharacterController {
@@ -160,7 +166,8 @@ impl Default for CharacterController {
             acceleration_hz: 8.0,
             air_acceleration_hz: 12.0,
             gravity: 26.0,
-            step_size: 1.0,
+            step_size: 0.5,
+            crane_height: 1.5,
             crouch_speed_scale: 1.0 / 3.0,
             speed: 12.0,
             air_speed: 1.5,
@@ -169,15 +176,19 @@ impl Default for CharacterController {
                 ..default()
             },
             max_speed: 100.0,
-            jump_height: 1.5,
+            jump_height: 2.0,
             max_air_wish_speed: 0.76,
             unground_speed: 10.0,
             step_down_detection_distance: 0.2,
-            min_step_ledge_space: 0.5,
+            min_step_ledge_space: 0.2,
             coyote_time: Duration::from_millis(150),
             jump_input_buffer: Duration::from_millis(150),
-            step_from_air: true,
+            crane_input_buffer: Duration::from_millis(150),
+            mantle_input_buffer: Duration::from_millis(150),
             step_into_air: false,
+            // Measured from navel to second phalanx of index finger.
+            // This implies that a crouching character can climb less high, as their center is lower.
+            max_mantle_dist: 1.15,
         }
     }
 }

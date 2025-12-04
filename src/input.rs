@@ -12,6 +12,8 @@ pub(super) fn plugin(app: &mut App) {
         .add_observer(apply_drop)
         .add_observer(apply_pull)
         .add_observer(apply_throw)
+        .add_observer(apply_crane)
+        .add_observer(apply_mantle)
         .add_systems(
             RunFixedMainLoop,
             clear_accumulated_input
@@ -28,6 +30,14 @@ pub struct Movement;
 #[derive(Debug, InputAction)]
 #[action_output(bool)]
 pub struct Jump;
+
+#[derive(Debug, InputAction)]
+#[action_output(bool)]
+pub struct Crane;
+
+#[derive(Debug, InputAction)]
+#[action_output(bool)]
+pub struct Mantle;
 
 #[derive(Debug, InputAction)]
 #[action_output(bool)]
@@ -59,6 +69,8 @@ pub struct AccumulatedInput {
     pub jumped: Option<Stopwatch>,
     // Whether any frame since the last fixed update loop input a crouch
     pub crouched: bool,
+    pub craned: Option<Stopwatch>,
+    pub mantled: Option<Stopwatch>,
 }
 
 fn apply_movement(
@@ -79,6 +91,18 @@ fn apply_jump(jump: On<Fire<Jump>>, mut accumulated_inputs: Query<&mut Accumulat
 fn apply_crouch(crouch: On<Fire<Crouch>>, mut accumulated_inputs: Query<&mut AccumulatedInput>) {
     if let Ok(mut accumulated_inputs) = accumulated_inputs.get_mut(crouch.context) {
         accumulated_inputs.crouched = true;
+    }
+}
+
+fn apply_crane(crouch: On<Fire<Crane>>, mut accumulated_inputs: Query<&mut AccumulatedInput>) {
+    if let Ok(mut accumulated_inputs) = accumulated_inputs.get_mut(crouch.context) {
+        accumulated_inputs.craned = Some(Stopwatch::new());
+    }
+}
+
+fn apply_mantle(crouch: On<Fire<Mantle>>, mut accumulated_inputs: Query<&mut AccumulatedInput>) {
+    if let Ok(mut accumulated_inputs) = accumulated_inputs.get_mut(crouch.context) {
+        accumulated_inputs.mantled = Some(Stopwatch::new());
     }
 }
 
@@ -135,6 +159,8 @@ fn clear_accumulated_input(mut accumulated_inputs: Query<&mut AccumulatedInput>)
         *accumulated_input = AccumulatedInput {
             last_movement: default(),
             jumped: accumulated_input.jumped.clone(),
+            craned: accumulated_input.craned.clone(),
+            mantled: accumulated_input.mantled.clone(),
             crouched: default(),
         }
     }
@@ -144,6 +170,12 @@ fn tick_timers(mut inputs: Query<&mut AccumulatedInput>, time: Res<Time>) {
     for mut input in inputs.iter_mut() {
         if let Some(jumped) = input.jumped.as_mut() {
             jumped.tick(time.delta());
+        }
+        if let Some(craned) = input.craned.as_mut() {
+            craned.tick(time.delta());
+        }
+        if let Some(mantled) = input.mantled.as_mut() {
+            mantled.tick(time.delta());
         }
     }
 }
