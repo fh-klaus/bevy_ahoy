@@ -87,8 +87,10 @@ fn run_kcc(
         } else {
             air_move(wish_velocity, &time, &move_and_slide, &mut ctx);
         }
+        info!(v=?ctx.velocity.0);
 
         update_grounded(&move_and_slide, &colliders, &time, &mut ctx);
+        info!(g=?ctx.state.grounded);
         validate_velocity(&mut ctx);
 
         finish_gravity(&time, &mut ctx);
@@ -311,6 +313,12 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
         info!("d");
         return false;
     };
+    if hit.intersects() {
+        ctx.transform.translation = original_position;
+        ctx.velocity.0 = original_velocity;
+        info!("d+_");
+        return false;
+    }
     let crane_height = up_dist - hit.distance;
 
     // Validate step back
@@ -334,7 +342,7 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
     move_character(time, move_and_slide, ctx);
 
     let cast_dir = Dir3::NEG_Y;
-    let cast_len = 0.01;
+    let cast_len = ctx.cfg.move_and_slide.skin_width + ctx.cfg.ground_distance;
     let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
 
     // If we either fall or slide down, use the direct move-and-slide instead
@@ -349,8 +357,10 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
     ctx.transform.translation += cast_dir * hit.distance;
     depenetrate_character(move_and_slide, ctx);
 
-    //ctx.velocity.y = original_velocity.y;
     ctx.state.last_step_up.reset();
+    // Ensure we don't immediately jump on the surface if crane and jump are bound to the same key
+    ctx.input.jumped = None;
+    info!(v=?ctx.velocity.0);
     info!("SUCCESS");
     true
 }
