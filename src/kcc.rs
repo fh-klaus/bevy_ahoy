@@ -64,24 +64,26 @@ fn run_kcc(
         // here we'd handle things like spectator, dead, noclip, etc.
         start_gravity(&time, &mut ctx);
 
-        handle_jump(&time, &colliders, &mut ctx);
-
-        handle_mantle(&time, &colliders, &move_and_slide, &mut ctx);
-
-        // Friction is handled before we add in any base velocity. That way, if we are on a conveyor,
-        //  we don't slow when standing still, relative to the conveyor.
-        if ctx.state.grounded.is_some() {
-            ctx.velocity.y = 0.0;
-            friction(&time, &mut ctx);
-        }
-
-        validate_velocity(&mut ctx);
-
         let wish_velocity = calculate_wish_velocity(&cams, &ctx);
-        if ctx.state.grounded.is_some() {
-            ground_move(wish_velocity, &time, &move_and_slide, &mut ctx);
-        } else {
-            air_move(wish_velocity, &time, &move_and_slide, &mut ctx);
+        if !handle_crane(wish_velocity, &time, &move_and_slide, &mut ctx) {
+            handle_jump(&time, &colliders, &mut ctx);
+
+            handle_mantle(&time, &colliders, &move_and_slide, &mut ctx);
+
+            // Friction is handled before we add in any base velocity. That way, if we are on a conveyor,
+            //  we don't slow when standing still, relative to the conveyor.
+            if ctx.state.grounded.is_some() {
+                ctx.velocity.y = 0.0;
+                friction(&time, &mut ctx);
+            }
+
+            validate_velocity(&mut ctx);
+
+            if ctx.state.grounded.is_some() {
+                ground_move(wish_velocity, &time, &move_and_slide, &mut ctx);
+            } else {
+                air_move(wish_velocity, &time, &move_and_slide, &mut ctx);
+            }
         }
 
         update_grounded(&move_and_slide, &colliders, &time, &mut ctx);
@@ -125,19 +127,17 @@ fn ground_move(wish_velocity: Vec3, time: &Time, move_and_slide: &MoveAndSlide, 
     let mut movement = ctx.velocity.0 * time.delta_secs();
     movement.y = 0.0;
 
-    if !handle_crane(time, move_and_slide, ctx) {
-        let hit = cast_move(movement, move_and_slide, ctx);
+    let hit = cast_move(movement, move_and_slide, ctx);
 
-        if hit.is_none() {
-            ctx.transform.translation += movement;
-            ctx.velocity.0 -= ctx.state.base_velocity;
-            depenetrate_character(move_and_slide, ctx);
-            snap_to_ground(move_and_slide, ctx);
-            return;
-        };
+    if hit.is_none() {
+        ctx.transform.translation += movement;
+        ctx.velocity.0 -= ctx.state.base_velocity;
+        depenetrate_character(move_and_slide, ctx);
+        snap_to_ground(move_and_slide, ctx);
+        return;
+    };
 
-        step_move(time, move_and_slide, ctx);
-    }
+    step_move(time, move_and_slide, ctx);
 
     ctx.velocity.0 -= ctx.state.base_velocity;
     snap_to_ground(move_and_slide, ctx);
@@ -163,16 +163,10 @@ fn ground_accelerate(wish_velocity: Vec3, acceleration_hz: f32, time: &Time, ctx
 }
 
 fn air_move(wish_velocity: Vec3, time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) {
-    let original_velocity = ctx.velocity.0;
-    ground_accelerate(wish_velocity, ctx.cfg.air_acceleration_hz, time, ctx);
+    air_accelerate(wish_velocity, ctx.cfg.air_acceleration_hz, time, ctx);
     ctx.velocity.0 += ctx.state.base_velocity;
 
-    if !handle_crane(time, move_and_slide, ctx) {
-        ctx.velocity.0 = original_velocity;
-        air_accelerate(wish_velocity, ctx.cfg.air_acceleration_hz, time, ctx);
-        ctx.velocity.0 += ctx.state.base_velocity;
-        step_move(time, move_and_slide, ctx);
-    }
+    step_move(time, move_and_slide, ctx);
 
     ctx.velocity.0 -= ctx.state.base_velocity;
 }
@@ -268,7 +262,12 @@ fn step_move(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) {
     }
 }
 
-fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -> bool {
+fn handle_crane(
+    wish_velocity: Vec3,
+    time: &Time,
+    move_and_slide: &MoveAndSlide,
+    ctx: &mut CtxItem,
+) -> bool {
     let Some(crane_time) = ctx.input.craned.clone() else {
         return false;
     };
@@ -279,15 +278,27 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
     let original_velocity = ctx.velocity.0;
     let original_touching_entities = ctx.state.touching_entities.clone();
     let original_crouching = ctx.state.crouching;
-    ctx.velocity.y = ctx.state.base_velocity.y;
+
+    ctx.velocity.y = 0.0;
+    ground_accelerate(wish_velocity, ctx.cfg.acceleration_hz, time, ctx);
+    ctx.velocity.y = 0.0;
+
+    ctx.velocity.0 += ctx.state.base_velocity;
+    let speed = ctx.velocity.length();
+
+    if speed < 0.0001 {
+        ctx.velocity.0 = original_velocity;
+        return false;
+    }
+
+    let Ok((vel_dir, speed)) = Dir3::new_and_length(ctx.velocity.0) else {
+        ctx.velocity.0 = original_velocity;
+        return false;
+    };
+
     if ctx.cfg.auto_crouch_in_crane {
         ctx.state.crouching = true;
     }
-    let Ok((vel_dir, speed)) = Dir3::new_and_length(ctx.velocity.0) else {
-        ctx.velocity.0 = original_velocity;
-        ctx.state.crouching = original_crouching;
-        return false;
-    };
 
     // Check wall
     let cast_dir = vel_dir;
