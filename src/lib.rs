@@ -185,7 +185,7 @@ impl Default for CharacterController {
             step_down_detection_distance: 0.2,
             min_crane_cos: 60.0_f32.to_radians().cos(),
             min_step_ledge_space: 0.2,
-            min_crane_ledge_space: 0.4,
+            min_crane_ledge_space: 0.35,
             coyote_time: Duration::from_millis(100),
             jump_input_buffer: Duration::from_millis(150),
             jump_crane_chain_time: Duration::from_millis(140),

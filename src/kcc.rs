@@ -272,6 +272,9 @@ fn handle_crane_movement(
     move_and_slide: &MoveAndSlide,
     ctx: &mut CtxItem,
 ) {
+    let Some(crane_height) = ctx.state.in_crane else {
+        return;
+    };
     ctx.state.last_step_up.reset();
     ctx.velocity.y = 0.0;
     ground_accelerate(wish_velocity, ctx.cfg.acceleration_hz, time, ctx);
@@ -280,9 +283,6 @@ fn handle_crane_movement(
 
     let Ok((vel_dir, speed)) = Dir3::new_and_length(ctx.velocity.0) else {
         ctx.state.in_crane = None;
-        return;
-    };
-    let Some(crane_height) = ctx.state.in_crane else {
         return;
     };
 
@@ -301,7 +301,14 @@ fn handle_crane_movement(
     };
 
     if ctx.state.in_crane.unwrap() != 0.0 {
-        return;
+        let cast_dir = vel_dir;
+        let cast_len = ctx.cfg.min_crane_ledge_space;
+        if cast_move(cast_dir * cast_len, move_and_slide, ctx).is_none() {
+            ctx.transform.translation += cast_dir * speed * time.delta_secs();
+            depenetrate_character(move_and_slide, ctx);
+            ctx.state.in_crane = None;
+            return;
+        }
     }
 
     let cast_dir = vel_dir;
