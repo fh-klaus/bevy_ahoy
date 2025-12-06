@@ -183,7 +183,7 @@ impl Default for CharacterController {
             max_air_wish_speed: 0.76,
             unground_speed: 10.0,
             step_down_detection_distance: 0.2,
-            min_crane_cos: 60.0_f32.to_radians().cos(),
+            min_crane_cos: 50.0_f32.to_radians().cos(),
             min_step_ledge_space: 0.2,
             min_crane_ledge_space: 0.35,
             coyote_time: Duration::from_millis(100),
@@ -193,7 +193,7 @@ impl Default for CharacterController {
             mantle_input_buffer: Duration::from_millis(150),
             // Measured from navel to second phalanx of index finger.
             max_mantle_dist: 1.15,
-            crane_speed: 13.0,
+            crane_speed: 15.0,
         }
     }
 }

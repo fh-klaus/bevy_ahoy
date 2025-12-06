@@ -286,6 +286,29 @@ fn handle_crane_movement(
         return;
     };
 
+    let wish_dir = if let Ok(wish_dir) = Dir3::new(wish_velocity) {
+        wish_dir
+    } else if let Ok(vel_dir) = Dir3::new(ctx.velocity.0) {
+        vel_dir
+    } else {
+        ctx.state.in_crane = None;
+        return;
+    };
+    // Check wall
+    let cast_dir = wish_dir;
+    let cast_len = ctx.cfg.min_crane_ledge_space;
+    let Some(wall_hit) = cast_move(cast_dir * cast_len, move_and_slide, ctx) else {
+        // nothing to move onto
+        ctx.state.in_crane = None;
+        return;
+    };
+    let wall_normal = vec3(wall_hit.normal1.x, 0.0, wall_hit.normal1.z).normalize_or_zero();
+
+    if (-wall_normal).dot(*wish_dir) < ctx.cfg.min_crane_cos {
+        ctx.state.in_crane = None;
+        return;
+    }
+
     let cast_dir = Vec3::Y;
     let cast_len = (ctx.cfg.crane_speed * time.delta_secs()).min(crane_height);
     let top_hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
@@ -340,18 +363,22 @@ fn update_in_crane(
     let original_position = ctx.transform.translation;
     let original_velocity = ctx.velocity.0;
 
+    let wish_dir = if let Ok(wish_dir) = Dir3::new(wish_velocity) {
+        wish_dir
+    } else if let Ok(vel_dir) = Dir3::new(ctx.velocity.0) {
+        vel_dir
+    } else {
+        ctx.velocity.0 = original_velocity;
+        return;
+    };
+
     ctx.velocity.y = 0.0;
     ground_accelerate(wish_velocity, ctx.cfg.acceleration_hz, time, ctx);
     ctx.velocity.y = 0.0;
     ctx.velocity.0 += ctx.state.base_velocity;
 
-    let Ok(vel_dir) = Dir3::new(ctx.velocity.0) else {
-        ctx.velocity.0 = original_velocity;
-        return;
-    };
-
     // Check wall
-    let cast_dir = vel_dir;
+    let cast_dir = wish_dir;
     let cast_len = ctx.cfg.min_crane_ledge_space;
     let Some(wall_hit) = cast_move(cast_dir * cast_len, move_and_slide, ctx) else {
         // nothing to move onto
@@ -360,7 +387,7 @@ fn update_in_crane(
     };
     let wall_normal = vec3(wall_hit.normal1.x, 0.0, wall_hit.normal1.z).normalize_or_zero();
 
-    if (-wall_normal).dot(*vel_dir) < ctx.cfg.min_crane_cos {
+    if (-wall_normal).dot(*wish_dir) < ctx.cfg.min_crane_cos {
         ctx.velocity.0 = original_velocity;
         return;
     }
