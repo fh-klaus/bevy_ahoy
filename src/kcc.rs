@@ -53,6 +53,7 @@ fn run_kcc(
     for mut ctx in &mut kccs {
         ctx.state.touching_entities.clear();
         ctx.state.last_ground.tick(time.delta());
+        ctx.state.last_tac.tick(time.delta());
         ctx.state.last_step_up.tick(time.delta());
         ctx.state.last_step_down.tick(time.delta());
 
@@ -772,11 +773,7 @@ fn update_grounded(
 }
 
 #[must_use]
-fn cast_move(
-    movement: Vec3,
-    move_and_slide: &MoveAndSlide,
-    ctx: &mut CtxItem,
-) -> Option<MoveHitData> {
+fn cast_move(movement: Vec3, move_and_slide: &MoveAndSlide, ctx: &CtxItem) -> Option<MoveHitData> {
     move_and_slide.cast_move(
         ctx.state.collider(),
         ctx.transform.translation,
@@ -879,33 +876,46 @@ fn handle_jump(
     if jump_time.elapsed() > ctx.cfg.jump_input_buffer {
         return;
     }
-    let mut jumpdir = Vec3::Y;
     // Handle tic tacs when we're in the air beyond coyote-time.
-    if ctx.state.grounded.is_none() && ctx.state.last_ground.elapsed() > ctx.cfg.coyote_time {
-        if let Some(hit) = cast_move(ctx.velocity.0 * time.delta_secs(), move_and_slide, ctx)
-            && hit.point2.y < ctx.transform.translation.y
+    let jumpdir = if ctx.state.grounded.is_none()
+        && ctx.state.last_ground.elapsed() > ctx.cfg.coyote_time
+    {
+        if wish_velocity.length_squared() < 0.1
+            || ctx.state.last_tac.elapsed() < ctx.cfg.tac_cooldown
+        {
+            return;
+        }
+        let normal = if let Some(hit) =
+            cast_move(ctx.velocity.0 * time.delta_secs(), move_and_slide, ctx)
         {
             // Cancel velocity that would be lost to move_and_slide if tac is buffered
             let vel_dot = ctx.velocity.0.dot(hit.normal1).min(0.0);
             ctx.velocity.0 -= vel_dot * hit.normal1;
-            jumpdir = hit.normal1;
+            hit.normal1
         } else if let Some(hit) = cast_move(wish_velocity * time.delta_secs(), move_and_slide, ctx)
-            && hit.point2.y < ctx.transform.translation.y
         {
-            jumpdir = hit.normal1;
+            hit.normal1
         } else {
             // No wall to tic tac off of, we're in free-fall.
             return;
+        };
+        // Don't tac off of ceilings/overhangs
+        if normal.y < 0.0 {
+            return;
         }
         let wish_unit = wish_velocity.normalize();
-        let wish_dot = -wish_unit.dot(jumpdir);
+        let wish_dot = -wish_unit.dot(normal);
         if wish_dot > ctx.cfg.max_tac_cos {
             return;
         }
-        jumpdir = (Vec3::Y * ctx.cfg.tac_jump_factor + jumpdir + wish_unit).normalize();
-    }
+        ctx.state.last_tac.reset();
+        (Vec3::Y * ctx.cfg.tac_jump_factor + normal + wish_unit).normalize()
+    } else {
+        Vec3::Y
+    };
     ctx.input.jumped = None;
     set_grounded(None, colliders, time, ctx);
+    // set last_ground to coyote time to make it not jump again after jumping ungrounds us
     ctx.state.last_ground.set_elapsed(ctx.cfg.coyote_time);
 
     // TODO: read ground's jump factor
