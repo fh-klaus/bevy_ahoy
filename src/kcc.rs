@@ -695,6 +695,8 @@ fn move_character(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem)
             true
         },
     );
+    let lost_velocity = (ctx.velocity.0 - out.projected_velocity).length();
+    ctx.state.tac_velocity = ctx.state.tac_velocity * 0.9 + lost_velocity;
     ctx.transform.translation = out.position;
     ctx.velocity.0 = out.projected_velocity;
     std::mem::swap(&mut ctx.state.touching_entities, &mut touching_entities);
@@ -909,11 +911,11 @@ fn handle_jump(
         let vel_dot = ctx.velocity.0.dot(normal).min(0.0);
         ctx.velocity.0 -= vel_dot * normal;
         ctx.state.last_tac.reset();
-
+        let groundedness = ctx.state.tac_velocity.max(vel_dot).min(1.0);
         let tac_wish = wish_unit - (wish_dot.min(0.0) - 1.0) * normal;
         // not sure if this is better (reflection)
         //let tac_wish = wish_unit - (wish_dot.min(0.0) * 2.0) * normal;
-        (Vec3::Y * ctx.cfg.tac_jump_factor + tac_wish).normalize()
+        (Vec3::Y * ctx.cfg.tac_jump_factor + tac_wish).normalize() * groundedness
     } else {
         set_grounded(None, colliders, time, ctx);
         // set last_ground to coyote time to make it not jump again after jumping ungrounds us
