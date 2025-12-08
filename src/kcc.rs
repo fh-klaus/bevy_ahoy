@@ -463,6 +463,26 @@ fn update_crane_state(
     if crane_time.elapsed() > ctx.cfg.crane_input_buffer {
         return;
     }
+
+    let Some(crane_height) = available_crane_height(wish_velocity, time, move_and_slide, ctx)
+    else {
+        return;
+    };
+
+    ctx.input.craned = None;
+    // Ensure we don't immediately jump on the surface if crane and jump are bound to the same key
+    ctx.input.jumped = None;
+    ctx.input.tac = None;
+
+    ctx.state.crane_height_left = Some(crane_height);
+}
+
+fn available_crane_height(
+    wish_velocity: Vec3,
+    time: &Time,
+    move_and_slide: &MoveAndSlide,
+    ctx: &mut CtxItem,
+) -> Option<f32> {
     let original_position = ctx.transform.translation;
     let original_velocity = ctx.velocity.0;
 
@@ -472,7 +492,7 @@ fn update_crane_state(
         vel_dir
     } else {
         ctx.velocity.0 = original_velocity;
-        return;
+        return None;
     };
 
     ctx.velocity.y = 0.0;
@@ -486,13 +506,13 @@ fn update_crane_state(
     let Some(wall_hit) = cast_move(cast_dir * cast_len, move_and_slide, ctx) else {
         // nothing to move onto
         ctx.velocity.0 = original_velocity;
-        return;
+        return None;
     };
     let wall_normal = vec3(wall_hit.normal1.x, 0.0, wall_hit.normal1.z).normalize_or_zero();
 
     if (-wall_normal).dot(*wish_dir) < ctx.cfg.min_crane_cos {
         ctx.velocity.0 = original_velocity;
-        return;
+        return None;
     }
 
     // step up
@@ -515,7 +535,7 @@ fn update_crane_state(
     else {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
-        return;
+        return None;
     };
     let crane_height = up_dist - down_dist;
 
@@ -533,7 +553,7 @@ fn update_crane_state(
     if cast_move(cast_dir * cast_len, move_and_slide, ctx).is_some() {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
-        return;
+        return None;
     };
     ctx.transform.translation += cast_dir * cast_len;
 
@@ -545,24 +565,19 @@ fn update_crane_state(
     let Some(hit) = hit else {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
-        return;
+        return None;
     };
     if hit.normal1.y < ctx.cfg.min_walk_cos {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
-        return;
+        return None;
     }
 
     // Reset KCC from speculative crane to actual current state
     ctx.transform.translation = original_position;
     ctx.velocity.0 = original_velocity;
 
-    ctx.input.craned = None;
-    // Ensure we don't immediately jump on the surface if crane and jump are bound to the same key
-    ctx.input.jumped = None;
-    ctx.input.tac = None;
-
-    ctx.state.crane_height_left = Some(crane_height);
+    Some(crane_height)
 }
 
 fn update_mantle_state(
@@ -581,6 +596,25 @@ fn update_mantle_state(
     if mantle_time.elapsed() > ctx.cfg.mantle_input_buffer {
         return;
     }
+    let Some(mantle_height) = available_mantle_height(wish_velocity, time, move_and_slide, ctx)
+    else {
+        return;
+    };
+
+    ctx.input.craned = None;
+    ctx.input.mantled = None;
+    // Ensure we don't immediately jump on the surface if mantle and jump are bound to the same key
+    ctx.input.jumped = None;
+
+    ctx.state.mantle_height_left = Some(mantle_height);
+}
+
+fn available_mantle_height(
+    wish_velocity: Vec3,
+    time: &Time,
+    move_and_slide: &MoveAndSlide,
+    ctx: &mut CtxItem,
+) -> Option<f32> {
     let original_position = ctx.transform.translation;
     let original_velocity = ctx.velocity.0;
 
@@ -590,8 +624,7 @@ fn update_mantle_state(
         vel_dir
     } else {
         ctx.velocity.0 = original_velocity;
-        info!("d");
-        return;
+        return None;
     };
 
     ctx.velocity.y = 0.0;
@@ -608,15 +641,13 @@ fn update_mantle_state(
     let Some(wall_hit) = cast_move_hands(cast_dir * cast_len, move_and_slide, ctx) else {
         // nothing to move onto
         ctx.velocity.0 = original_velocity;
-        info!("e");
-        return;
+        return None;
     };
     let wall_normal = vec3(wall_hit.normal1.x, 0.0, wall_hit.normal1.z).normalize_or_zero();
 
     if (-wall_normal).dot(*wish_dir) < ctx.cfg.min_mantle_cos {
         ctx.velocity.0 = original_velocity;
-        info!(?wall_normal, ?wish_dir, "f");
-        return;
+        return None;
     }
 
     ctx.transform.translation +=
@@ -642,11 +673,9 @@ fn update_mantle_state(
     else {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
-        info!("g");
-        return;
+        return None;
     };
     ctx.transform.translation += cast_dir * down_dist;
-    error!("a");
 
     let mantle_height = up_dist - down_dist;
 
@@ -666,8 +695,7 @@ fn update_mantle_state(
     if cast_move_hands(cast_dir * cast_len, move_and_slide, ctx).is_some() {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
-        info!("i");
-        return;
+        return None;
     };
     ctx.transform.translation += cast_dir * cast_len;
 
@@ -679,27 +707,19 @@ fn update_mantle_state(
     let Some(hit) = hit else {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
-        info!("j");
-        return;
+        return None;
     };
     if hit.normal1.y < ctx.cfg.min_walk_cos {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
-        info!("k");
-        return;
+        return None;
     }
 
     // Reset KCC from speculative mantle to actual current state
     ctx.transform.translation = original_position;
     ctx.velocity.0 = original_velocity;
 
-    ctx.input.craned = None;
-    ctx.input.mantled = None;
-    // Ensure we don't immediately jump on the surface if mantle and jump are bound to the same key
-    ctx.input.jumped = None;
-
-    ctx.state.mantle_height_left = Some(mantle_height);
-    error!("success");
+    Some(mantle_height)
 }
 
 fn move_character(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) {
