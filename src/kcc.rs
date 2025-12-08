@@ -58,7 +58,6 @@ fn run_kcc(
         ctx.state.last_step_down.tick(time.delta());
 
         depenetrate_character(&move_and_slide, &mut ctx);
-
         update_grounded(&move_and_slide, &colliders, &time, &mut ctx);
 
         handle_crouching(&move_and_slide, &mut ctx);
@@ -593,6 +592,10 @@ fn update_mantle_state(
         return;
     }
     if ctx.state.mantle_height_left.is_some() {
+        if ctx.input.jumped.is_some() {
+            ctx.input.jumped = None;
+            ctx.state.mantle_height_left = None;
+        }
         return;
     }
     let Some(mantle_time) = ctx.input.mantled.clone() else {
@@ -642,10 +645,12 @@ fn available_mantle_height(
     // Check wall
     let radius = ctx.state.radius();
     let cast_dir = wish_dir;
-    let hand_to_wall_dist =
-        ctx.cfg.climb_wall_distance + radius + ctx.cfg.move_and_slide.skin_width;
+    let hand_to_wall_dist = ctx.cfg.climb_wall_distance
+        + radius
+        + ctx.cfg.move_and_slide.skin_width
+        + ctx.cfg.min_ledge_grab_space.half_size.z;
     let cast_len = hand_to_wall_dist;
-    let Some(wall_hit) = cast_move_hands(cast_dir * cast_len, move_and_slide, ctx) else {
+    let Some(wall_hit) = cast_move(cast_dir * cast_len, move_and_slide, ctx) else {
         // nothing to move onto
         ctx.velocity.0 = original_velocity;
         info!("b");
@@ -661,6 +666,7 @@ fn available_mantle_height(
 
     ctx.transform.translation +=
         cast_dir * wall_hit.distance + wall_normal * ctx.cfg.climb_wall_distance;
+    depenetrate_character(move_and_slide, ctx);
 
     // step up
     let cast_dir = Dir3::Y;
@@ -860,24 +866,6 @@ fn cast_move_hands(
         ctx.cfg.move_and_slide.skin_width,
         &ctx.cfg.filter,
     )
-}
-
-#[must_use]
-fn hands_intersect(move_and_slide: &MoveAndSlide, ctx: &CtxItem) -> bool {
-    let mut intersects = false;
-    move_and_slide.intersections(
-        ctx.state.collider(),
-        ctx.transform.translation,
-        ctx.transform.rotation,
-        // Need a higher distance than skin width since we assume we're corrently not intersecting anything
-        ctx.cfg.move_and_slide.skin_width * 2.0,
-        &ctx.cfg.filter,
-        |_contact_point, _normal| {
-            intersects = true;
-            false
-        },
-    );
-    intersects
 }
 
 fn set_grounded(
