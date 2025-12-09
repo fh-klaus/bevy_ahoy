@@ -155,9 +155,14 @@ pub struct CharacterController {
     pub mantle_input_buffer: Duration,
     pub min_step_ledge_space: f32,
     pub min_crane_ledge_space: f32,
-    pub max_mantle_dist: f32,
+    pub min_mantle_ledge_space: f32,
+    pub mantle_height: f32,
     pub min_crane_cos: f32,
+    pub min_mantle_cos: f32,
     pub crane_speed: f32,
+    pub mantle_speed: f32,
+    pub min_ledge_grab_space: Cuboid,
+    pub climb_pull_up_height: f32,
 }
 
 impl Default for CharacterController {
@@ -175,7 +180,6 @@ impl Default for CharacterController {
             air_acceleration_hz: 12.0,
             gravity: 29.0,
             step_size: 0.7,
-            crane_height: 1.5,
             crouch_speed_scale: 1.0 / 3.0,
             speed: 12.0,
             air_speed: 1.5,
@@ -194,16 +198,21 @@ impl Default for CharacterController {
             unground_speed: 10.0,
             step_down_detection_distance: 0.2,
             min_crane_cos: 50.0_f32.to_radians().cos(),
+            min_mantle_cos: 50.0_f32.to_radians().cos(),
             min_step_ledge_space: 0.2,
             min_crane_ledge_space: 0.35,
+            min_mantle_ledge_space: 0.5,
             coyote_time: Duration::from_millis(100),
             jump_input_buffer: Duration::from_millis(150),
             jump_crane_chain_time: Duration::from_millis(140),
             crane_input_buffer: Duration::from_millis(200),
             mantle_input_buffer: Duration::from_millis(150),
-            // Measured from navel to second phalanx of index finger.
-            max_mantle_dist: 1.15,
-            crane_speed: 15.0,
+            crane_height: 1.5,
+            mantle_height: 1.0,
+            crane_speed: 11.0,
+            mantle_speed: 5.0,
+            min_ledge_grab_space: Cuboid::new(0.2, 0.1, 0.2),
+            climb_pull_up_height: 0.3,
         }
     }
 }
@@ -217,11 +226,11 @@ impl CharacterController {
             kcc.filter.excluded_entities.add(ctx.entity);
         }
 
-        let crouch_height = {
+        let (crouch_height, min_ledge_grab_space) = {
             let Some(kcc) = world.get::<Self>(ctx.entity) else {
                 return;
             };
-            kcc.crouch_height
+            (kcc.crouch_height, kcc.min_ledge_grab_space)
         };
 
         let Some(collider) = world.entity(ctx.entity).get::<Collider>().cloned() else {
@@ -259,17 +268,22 @@ impl CharacterController {
             Rotation::default(),
             crouching_collider,
         )]);
+
+        state.hand_collider = Collider::from(min_ledge_grab_space);
     }
 }
 
 #[derive(Component, Clone, Reflect, Debug)]
 #[reflect(Component)]
 pub struct CharacterControllerState {
+    pub orientation: Transform,
     pub base_velocity: Vec3,
     #[reflect(ignore)]
     pub standing_collider: Collider,
     #[reflect(ignore)]
     pub crouching_collider: Collider,
+    #[reflect(ignore)]
+    pub hand_collider: Collider,
     pub grounded: Option<MoveHitData>,
     pub crouching: bool,
     pub tac_velocity: f32,
@@ -278,16 +292,19 @@ pub struct CharacterControllerState {
     pub last_tac: Stopwatch,
     pub last_step_up: Stopwatch,
     pub last_step_down: Stopwatch,
-    pub in_crane: Option<f32>,
+    pub crane_height_left: Option<f32>,
+    pub mantle_height_left: Option<f32>,
 }
 
 impl Default for CharacterControllerState {
     fn default() -> Self {
         Self {
             base_velocity: Vec3::ZERO,
+            orientation: Transform::IDENTITY,
             // late initialized
             standing_collider: default(),
             crouching_collider: default(),
+            hand_collider: default(),
             grounded: None,
             crouching: false,
             tac_velocity: 0.0,
@@ -296,7 +313,8 @@ impl Default for CharacterControllerState {
             last_tac: max_stopwatch(),
             last_step_up: max_stopwatch(),
             last_step_down: max_stopwatch(),
-            in_crane: None,
+            crane_height_left: None,
+            mantle_height_left: None,
         }
     }
 }
@@ -313,6 +331,63 @@ impl CharacterControllerState {
             &self.crouching_collider
         } else {
             &self.standing_collider
+        }
+    }
+
+    pub fn pos_to_head_dist(&self) -> f32 {
+        self.collider().shape_scaled().compute_local_aabb().maxs.y
+    }
+
+    pub fn pos_to_feet_dist(&self) -> f32 {
+        self.collider().shape_scaled().compute_local_aabb().mins.y
+    }
+
+    pub fn radius(&self) -> f32 {
+        match self.collider().shape_scaled().as_typed_shape() {
+            avian3d::parry::shape::TypedShape::Ball(ball) => ball.radius,
+            avian3d::parry::shape::TypedShape::Cuboid(cuboid) => cuboid.half_extents.max(),
+            avian3d::parry::shape::TypedShape::Capsule(capsule) => capsule.radius,
+            avian3d::parry::shape::TypedShape::Segment(segment) => segment.length() / 2.0,
+            avian3d::parry::shape::TypedShape::Triangle(triangle) => triangle.circumcircle().1,
+            avian3d::parry::shape::TypedShape::Voxels(voxels) => {
+                voxels.local_bounding_sphere().radius()
+            }
+            avian3d::parry::shape::TypedShape::TriMesh(tri_mesh) => {
+                tri_mesh.local_bounding_sphere().radius()
+            }
+            avian3d::parry::shape::TypedShape::Polyline(polyline) => {
+                polyline.local_bounding_sphere().radius()
+            }
+            avian3d::parry::shape::TypedShape::HalfSpace(_half_space) => f32::INFINITY,
+            avian3d::parry::shape::TypedShape::HeightField(height_field) => {
+                height_field.local_bounding_sphere().radius()
+            }
+            avian3d::parry::shape::TypedShape::Compound(compound) => {
+                compound.local_bounding_sphere().radius()
+            }
+            avian3d::parry::shape::TypedShape::ConvexPolyhedron(convex_polyhedron) => {
+                convex_polyhedron.local_bounding_sphere().radius()
+            }
+            avian3d::parry::shape::TypedShape::Cylinder(cylinder) => cylinder.radius,
+            avian3d::parry::shape::TypedShape::Cone(cone) => cone.radius,
+            avian3d::parry::shape::TypedShape::RoundCuboid(round_shape) => {
+                round_shape.border_radius + round_shape.inner_shape.half_extents.max()
+            }
+            avian3d::parry::shape::TypedShape::RoundTriangle(round_shape) => {
+                round_shape.border_radius + round_shape.inner_shape.circumcircle().1
+            }
+            avian3d::parry::shape::TypedShape::RoundCylinder(round_shape) => {
+                round_shape.border_radius + round_shape.inner_shape.radius
+            }
+            avian3d::parry::shape::TypedShape::RoundCone(round_shape) => {
+                round_shape.border_radius + round_shape.inner_shape.radius
+            }
+            avian3d::parry::shape::TypedShape::RoundConvexPolyhedron(round_shape) => {
+                round_shape.border_radius + round_shape.inner_shape.local_bounding_sphere().radius()
+            }
+            avian3d::parry::shape::TypedShape::Custom(shape) => {
+                shape.compute_local_bounding_sphere().radius()
+            }
         }
     }
 }
