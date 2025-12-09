@@ -189,7 +189,7 @@ fn clear_accumulated_input(mut accumulated_inputs: Query<&mut AccumulatedInput>)
         *accumulated_input = AccumulatedInput {
             last_movement: default(),
             jumped: accumulated_input.jumped.clone(),
-            swim_up: accumulated_input.swim_up.clone(),
+            swim_up: default(),
             tac: accumulated_input.tac.clone(),
             craned: accumulated_input.craned.clone(),
             mantled: accumulated_input.mantled.clone(),
