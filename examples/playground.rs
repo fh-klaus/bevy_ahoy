@@ -72,10 +72,6 @@ fn main() -> AppExit {
                 release_cursor.run_if(input_just_pressed(KeyCode::Escape)),
             ),
         )
-        .add_systems(
-            FixedUpdate,
-            update_water.before(AhoySystems::MoveCharacters),
-        )
         .add_systems(FixedUpdate, move_trains)
         .add_observer(spawn_player)
         .run()
@@ -367,36 +363,19 @@ fn move_trains(
 }
 
 #[solid_class(base(Transform, Visibility))]
-#[derive(Default, Deref)]
-#[require(Sensor, GlobalTransform, CollisionEventsEnabled)]
+#[component(on_add = on_add_water)]
+#[derive(Default)]
 pub struct Water {
     speed: f32,
 }
 
-fn update_water(
-    mut objects: Query<(Entity, &Position, &mut WaterState)>,
-    waters: Query<(&Collider, &Position, &Rotation, &Water)>,
-    collisions: Collisions,
-) {
-    for (object, object_position, mut water_state) in &mut objects {
-        water_state.level = WaterLevel::None;
-        water_state.speed = f32::MAX;
-        let waist = **object_position;
-        for contact_pair in collisions.collisions_with(object) {
-            if let Ok((collider, position, rotation, water)) = waters
-                .get(contact_pair.collider1)
-                .or(waters.get(contact_pair.collider2))
-            {
-                water_state.speed = water_state.speed.min(water.speed);
-                let level = if collider.contains_point(*position, *rotation, waist) {
-                    WaterLevel::Center
-                } else {
-                    WaterLevel::Touching
-                };
-                if level > water_state.level {
-                    water_state.level = level;
-                }
-            }
-        }
+fn on_add_water(mut world: DeferredWorld, ctx: HookContext) {
+    if world.is_scene_world() {
+        return;
     }
+    let speed = world.get::<Water>(ctx.entity).unwrap().speed;
+    world
+        .commands()
+        .entity(ctx.entity)
+        .insert(bevy_ahoy::prelude::Water { speed });
 }

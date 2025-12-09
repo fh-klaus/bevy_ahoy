@@ -16,13 +16,14 @@ pub mod prelude {
     };
 
     pub use crate::{
-        AhoyPlugin, AhoySystems, CharacterController, PickupConfig, WaterLevel, WaterState,
+        AhoyPlugin, AhoySystems, CharacterController, PickupConfig,
         camera::{CharacterControllerCamera, CharacterControllerCameraOf},
         input::{
             Crane, Crouch, DropObject, Jump, Mantle, Movement, PullObject, RotateCamera, SwimUp,
             Tac, ThrowObject, YankCamera,
         },
         pickup,
+        water::{Water, WaterLevel, WaterState},
     };
 }
 
@@ -54,6 +55,7 @@ mod fixed_update_utils;
 pub mod input;
 mod kcc;
 mod pickup_glue;
+mod water;
 
 /// Also requires you to add [`PhysicsPlugins`] and [`EnhancedInputPlugin`] to work properly.
 pub struct AhoyPlugin {
@@ -92,6 +94,7 @@ impl Plugin for AhoyPlugin {
             camera::plugin,
             input::plugin,
             kcc::plugin(self.schedule),
+            water::plugin,
             fixed_update_utils::plugin,
             pickup_glue::plugin,
             dynamics::plugin(self.schedule),
@@ -397,21 +400,6 @@ impl CharacterControllerState {
             }
         }
     }
-}
-
-#[derive(Component, Default, Copy, Reflect, Clone, Debug)]
-#[reflect(Component)]
-pub struct WaterState {
-    pub level: WaterLevel,
-    pub speed: f32,
-}
-
-#[derive(Default, Copy, Reflect, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum WaterLevel {
-    #[default]
-    None,
-    Touching,
-    Center,
 }
 
 /// Data related to a hit during [`MoveAndSlide::move_and_slide`].
