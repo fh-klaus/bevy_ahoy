@@ -7,7 +7,7 @@ use bevy_ecs::{
 };
 use core::fmt::Debug;
 use core::time::Duration;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::{CharacterControllerState, input::AccumulatedInput, prelude::*};
 
@@ -372,15 +372,14 @@ fn handle_mantle_movement(
         ctx.state.mantle_height_left = None;
         return;
     };
-    let Some(movement) = ctx.input.last_movement else {
+    let Ok(wish_dir) = Dir3::new(wish_velocity) else {
         // Standing still
         return;
     };
 
     let climb_dir = Vec3::Y;
     // positive when looking at the wall or above it, negative when looking down
-    let local_wish = movement.y * ctx.state.orientation.forward();
-    let wish_y = rescale_climb_cos(local_wish.y);
+    let wish_y = rescale_climb_cos(wish_dir.y);
 
     let mut climb_dist = (ctx.cfg.mantle_speed * time.delta_secs() * wish_y).min(mantle_height);
     if mantle_height - climb_dist > ctx.cfg.mantle_height - ctx.cfg.min_ledge_grab_space.size().y {
