@@ -54,6 +54,14 @@ pub struct RotateCamera;
 
 #[derive(Debug, InputAction)]
 #[action_output(bool)]
+pub struct Right;
+
+#[derive(Debug, InputAction)]
+#[action_output(bool)]
+pub struct Left;
+
+#[derive(Debug, InputAction)]
+#[action_output(bool)]
 pub struct PullObject;
 
 #[derive(Debug, InputAction)]

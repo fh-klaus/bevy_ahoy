@@ -158,6 +158,7 @@ pub struct CharacterController {
     pub max_mantle_dist: f32,
     pub min_crane_cos: f32,
     pub crane_speed: f32,
+    pub yaw_speed: f32,
 }
 
 impl Default for CharacterController {
@@ -204,6 +205,7 @@ impl Default for CharacterController {
             // Measured from navel to second phalanx of index finger.
             max_mantle_dist: 1.15,
             crane_speed: 15.0,
+            yaw_speed: 210.,
         }
     }
 }

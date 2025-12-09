@@ -3,14 +3,20 @@ use std::{f32::consts::TAU, time::Duration};
 use avian_pickup::actor::AvianPickupActor;
 use bevy_ecs::{lifecycle::HookContext, relationship::Relationship, world::DeferredWorld};
 
-use crate::{CharacterControllerState, input::RotateCamera, prelude::*};
+use crate::{
+    CharacterControllerState,
+    input::{Left, Right, RotateCamera},
+    prelude::*,
+};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         RunFixedMainLoop,
         sync_camera_transform.after(TransformEasingSystems::UpdateEasingTick),
     )
-    .add_observer(rotate_camera);
+    .add_observer(rotate_camera)
+    .add_observer(rotate_right)
+    .add_observer(rotate_left);
 }
 
 #[derive(Component, Clone, Copy, Debug)]
@@ -136,6 +142,70 @@ fn rotate_camera(
     yaw += delta.x.to_radians();
     pitch += delta.y.to_radians();
     pitch = pitch.clamp(-TAU / 4.0 + 0.01, TAU / 4.0 - 0.01);
+
+    transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, 0.0);
+}
+
+fn rotate_right(
+    rotate: On<Fire<Right>>,
+    cameras: Query<&CharacterControllerCamera>,
+    mut transforms: Query<&mut Transform>,
+    camera_ofs: Query<&CharacterControllerCameraOf>,
+    controllers: Query<&CharacterController>,
+    time: Res<Time>,
+) {
+    let Ok(camera) = cameras.get(rotate.context) else {
+        return;
+    };
+
+    let Ok(controller) = camera_ofs
+        .get(camera.get())
+        .and_then(|c| controllers.get(c.character_controller))
+    else {
+        return;
+    };
+
+    let Ok(mut transform) = transforms.get_mut(camera.get()) else {
+        return;
+    };
+
+    let (mut yaw, pitch, _) = transform.rotation.to_euler(EulerRot::YXZ);
+
+    let rotation_amount = controller.yaw_speed.to_radians() * time.delta_secs();
+
+    yaw -= rotation_amount;
+
+    transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, 0.0);
+}
+
+fn rotate_left(
+    rotate: On<Fire<Left>>,
+    cameras: Query<&CharacterControllerCamera>,
+    mut transforms: Query<&mut Transform>,
+    camera_ofs: Query<&CharacterControllerCameraOf>,
+    controllers: Query<&CharacterController>,
+    time: Res<Time>,
+) {
+    let Ok(camera) = cameras.get(rotate.context) else {
+        return;
+    };
+
+    let Ok(controller) = camera_ofs
+        .get(camera.get())
+        .and_then(|c| controllers.get(c.character_controller))
+    else {
+        return;
+    };
+
+    let Ok(mut transform) = transforms.get_mut(camera.get()) else {
+        return;
+    };
+
+    let (mut yaw, pitch, _) = transform.rotation.to_euler(EulerRot::YXZ);
+
+    let rotation_amount = controller.yaw_speed.to_radians() * time.delta_secs();
+
+    yaw += rotation_amount;
 
     transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, 0.0);
 }

@@ -8,6 +8,7 @@ use bevy::{
     prelude::*,
     window::{CursorGrabMode, CursorOptions, WindowResolution},
 };
+use bevy_ahoy::input::{Left, Right};
 use bevy_ahoy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 use bevy_time::Stopwatch;
@@ -115,6 +116,7 @@ fn setup(mut commands: Commands, assets: Res<AssetServer>) {
         speed: 6.0,
         gravity: 23.0,
         friction_hz: 4.0,
+        yaw_speed: 80.0,
         ..default()
     },
     RigidBody::Kinematic,
@@ -175,6 +177,16 @@ impl PlayerInput {
                 (
                     Action::<Crouch>::new(),
                     bindings![KeyCode::ControlLeft, GamepadButton::LeftTrigger],
+                ),
+                (
+                    Action::<Right>::new(),
+                    Scale::splat(0.05),
+                    bindings![MouseButton::Right],
+                ),
+                (
+                    Action::<Left>::new(),
+                    Scale::splat(0.05),
+                    bindings![MouseButton::Left],
                 ),
                 (
                     Action::<RotateCamera>::new(),
