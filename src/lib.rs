@@ -206,7 +206,7 @@ impl Default for CharacterController {
             tac_power: 0.755,
             tac_jump_factor: 1.0,
             ledge_jump_power: 1.5,
-            ledge_jump_factor: 1.0,
+            ledge_jump_factor: 0.8,
             tac_input_buffer: Duration::from_millis(150),
             max_tac_cos: 40.0_f32.to_radians().cos(),
             max_air_wish_speed: 0.76,
