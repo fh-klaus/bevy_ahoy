@@ -7,7 +7,7 @@ use bevy_ecs::{
 };
 use core::fmt::Debug;
 use core::time::Duration;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::{CharacterControllerState, MantleProgress, input::AccumulatedInput, prelude::*};
 
@@ -424,8 +424,7 @@ fn handle_mantle_movement(
     };
 
     ctx.velocity.0 = Vec3::ZERO;
-    let Ok(wish_dir) = Dir3::new(wish_velocity) else {
-        // Standing still
+    if wish_velocity.length_squared() < 0.001 {
         return;
     };
     let Some((_wall_point, wall_normal)) =
@@ -978,7 +977,9 @@ fn set_grounded(
     }
 
     ctx.state.grounded = new_ground;
-    ctx.state.mantle_progress = None;
+    if ctx.state.grounded.is_some() {
+        ctx.state.mantle_progress = None;
+    }
 
     if ctx.state.grounded.is_some() {
         ctx.velocity.y = 0.0;
@@ -1099,11 +1100,8 @@ fn handle_ledge_jump_dir(ctx: &mut CtxItem) -> Option<Vec3> {
     let fwd = ctx.state.orientation.forward();
     let flat_fwd = Dir3::new(vec3(fwd.x, 0.0, fwd.z)).ok()?;
     let tac_dir = Dir3::new(Vec3::Y * ctx.cfg.ledge_jump_factor + *flat_fwd).ok()?;
-    info!(time=?ctx
-        .input
-        .mantled);
     ctx.state.mantle_progress = None;
-    Some(dbg!(tac_dir * ctx.cfg.ledge_jump_power))
+    Some(tac_dir * ctx.cfg.ledge_jump_power)
 }
 
 fn handle_jump(
