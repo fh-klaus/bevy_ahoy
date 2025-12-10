@@ -1139,10 +1139,14 @@ fn calculate_wish_velocity(_cams: &Query<&Transform>, ctx: &CtxItem) -> Vec3 {
 }
 
 #[must_use]
-fn calculate_3d_wish_velocity(_cams: &Query<&Transform>, ctx: &CtxItem) -> Vec3 {
+fn calculate_3d_wish_velocity(cams: &Query<&Transform>, ctx: &CtxItem) -> Vec3 {
+    let transform = ctx
+        .cam
+        .and_then(|cam| cams.get(cam.get()).ok())
+        .unwrap_or(&ctx.state.orientation);
     let movement = ctx.input.last_movement.unwrap_or_default();
-    let forward = ctx.state.orientation.forward();
-    let right = ctx.state.orientation.right();
+    let forward = transform.forward();
+    let right = transform.right();
 
     let wish_vel = movement.y * forward + movement.x * right;
     let wish_dir = wish_vel.normalize_or_zero();
