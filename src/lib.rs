@@ -284,6 +284,12 @@ impl CharacterController {
             // note: well-behaved shapes like cylinders and cuboids will not actually subdivide when scaled, yay
             crouching_collider.set_scale(vec3(1.0, frac, 1.0), 16);
         }
+        state.jump_crouching_collider = Collider::compound(vec![(
+            Vec3::ZERO,
+            Rotation::default(),
+            crouching_collider.clone(),
+        )]);
+        
         state.crouching_collider = Collider::compound(vec![(
             Vec3::Y * (crouch_height - standing_height) / 2.0,
             Rotation::default(),
@@ -304,6 +310,8 @@ pub struct CharacterControllerState {
     pub standing_collider: Collider,
     #[reflect(ignore)]
     pub crouching_collider: Collider,
+    #[reflect(ignore)]
+    pub jump_crouching_collider: Collider,
     #[reflect(ignore)]
     pub hand_collider: Collider,
     pub grounded: Option<MoveHitData>,
@@ -327,6 +335,7 @@ impl Default for CharacterControllerState {
             // late initialized
             standing_collider: default(),
             crouching_collider: default(),
+            jump_crouching_collider: default(),
             hand_collider: default(),
             grounded: None,
             crouching: false,
@@ -359,7 +368,11 @@ fn max_stopwatch() -> Stopwatch {
 impl CharacterControllerState {
     pub fn collider(&self) -> &Collider {
         if self.crouching {
-            &self.crouching_collider
+            if self.grounded.is_some() {
+                &self.crouching_collider
+            } else {
+                &self.jump_crouching_collider
+            }
         } else {
             &self.standing_collider
         }
