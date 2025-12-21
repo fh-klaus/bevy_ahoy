@@ -1,4 +1,4 @@
-use avian3d::prelude::*;
+use avian3d::{collision::collider::trimesh_builder::TrimeshBuilder, prelude::*};
 use bevy::{
     ecs::{lifecycle::HookContext, world::DeferredWorld},
     gltf::GltfPlugin,
@@ -390,6 +390,12 @@ const NPC_SPAWN_POINT: Vec3 = Vec3::new(-55.0, 45.0, 1.0);
 
 #[derive(Component, Default)]
 #[component(on_add = Npc::on_add)]
+#[require(
+    CharacterController,
+    RigidBody::Kinematic,
+    Collider::cylinder(0.7, 1.8),
+    Mass(90.0)
+)]
 struct Npc {
     step: usize,
     timer: Timer,
@@ -397,6 +403,22 @@ struct Npc {
 
 impl Npc {
     fn on_add(mut world: DeferredWorld, ctx: HookContext) {
+        let Some(collider) = world
+            .get::<Collider>(ctx.entity)
+            .map(|c| c.shape_scaled().clone())
+        else {
+            return;
+        };
+        let mesh = world
+            .resource_mut::<Assets<Mesh>>()
+            .add(TrimeshBuilder::new(collider).build().unwrap());
+        let material = world
+            .resource_mut::<Assets<StandardMaterial>>()
+            .add(Color::WHITE);
+        world
+            .commands()
+            .entity(ctx.entity)
+            .insert((Mesh3d(mesh), MeshMaterial3d(material)));
         world.commands().entity(ctx.entity).insert(actions!(Npc[
             (
                 Action::<GlobalMovement>::new(),
@@ -420,23 +442,10 @@ impl Npc {
     }
 }
 
-fn spawn_npc(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn spawn_npc(mut commands: Commands) {
     commands
         .spawn(Transform::from_translation(NPC_SPAWN_POINT))
-        .insert((
-            CharacterController::default(),
-            CollisionLayers::new(CollisionLayer::Player, LayerMask::ALL),
-            RigidBody::Kinematic,
-            Collider::cylinder(0.7, 1.8),
-            Mass(90.0),
-            Npc::default(),
-            Mesh3d(meshes.add(bevy::math::primitives::Cylinder::new(0.7, 1.8))),
-            MeshMaterial3d(materials.add(Color::WHITE)),
-        ));
+        .insert((Npc::default(),));
 }
 
 fn update_npc(
