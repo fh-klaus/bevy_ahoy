@@ -242,15 +242,12 @@ impl Default for CharacterController {
 impl CharacterController {
     pub fn on_add(mut world: DeferredWorld, ctx: HookContext) {
         let has_collider = world.entity(ctx.entity).contains::<Collider>();
-        let has_constructor = world.entity(ctx.entity).contains::<ColliderConstructor>()
-            || world
-                .entity(ctx.entity)
-                .contains::<ColliderConstructorHierarchy>();
+        let has_constructor = world.entity(ctx.entity).contains::<ColliderConstructor>();
 
         if has_collider {
             let entity = ctx.entity;
             world.commands().queue(move |world: &mut World| {
-                setup_collider(entity, world);
+                world.run_system_cached_with(setup_collider, entity)
             });
         } else if has_constructor {
             world
@@ -258,45 +255,34 @@ impl CharacterController {
                 .entity(ctx.entity)
                 .observe(on_collider_ready);
         } else {
-            panic!("CharacterController requires a Collider or ColliderConstructor");
+            panic!("`CharacterController` requires a `Collider` or `ColliderConstructor`");
         }
     }
 }
 
-fn on_collider_ready(trigger: On<Add, Collider>, mut commands: Commands) {
-    let entity = trigger.entity;
-    commands.queue(move |world: &mut World| {
-        setup_collider(entity, world);
-    });
+fn on_collider_ready(trigger: On<ColliderConstructorReady>, mut commands: Commands) {
+    commands.run_system_cached_with(setup_collider, trigger.entity);
 }
 
-fn setup_collider(entity: Entity, world: &mut World) {
-    {
-        let Some(mut kcc) = world.get_mut::<CharacterController>(entity) else {
-            return;
-        };
-        kcc.filter.excluded_entities.add(entity);
-    }
-
-    let (crouch_height, min_ledge_grab_space) = {
-        let Some(kcc) = world.get::<CharacterController>(entity) else {
-            return;
-        };
-        (kcc.crouch_height, kcc.min_ledge_grab_space)
-    };
-
-    let Some(collider) = world.entity(entity).get::<Collider>().cloned() else {
+fn setup_collider(
+    In(entity): In<Entity>,
+    mut kcc: Query<(
+        &mut CharacterController,
+        &mut CharacterControllerState,
+        &Collider,
+    )>,
+) {
+    let Ok((mut cfg, mut state, collider)) = kcc.get_mut(entity) else {
         return;
     };
+    cfg.filter.excluded_entities.add(entity);
+
     let standing_aabb = collider.aabb(default(), Rotation::default());
     let standing_height = standing_aabb.max.y - standing_aabb.min.y;
 
-    let Some(mut state) = world.get_mut::<CharacterControllerState>(entity) else {
-        return;
-    };
     state.standing_collider = collider.clone();
 
-    let frac = crouch_height / standing_height;
+    let frac = cfg.crouch_height / standing_height;
 
     let mut crouching_collider = Collider::from(SharedShape(Arc::from(
         state.standing_collider.shape().clone_dyn(),
@@ -309,7 +295,7 @@ fn setup_collider(entity: Entity, world: &mut World) {
             .as_capsule_mut()
             .unwrap();
         let radius = capsule.radius;
-        let new_height = (crouch_height - radius).max(0.0);
+        let new_height = (cfg.crouch_height - radius).max(0.0);
         *capsule = Capsule::new_y(new_height / 2.0, radius);
     } else {
         // note: well-behaved shapes like cylinders and cuboids will not actually subdivide when scaled, yay
@@ -322,12 +308,12 @@ fn setup_collider(entity: Entity, world: &mut World) {
     )]);
 
     state.crouching_collider = Collider::compound(vec![(
-        Vec3::Y * (crouch_height - standing_height) / 2.0,
+        Vec3::Y * (cfg.crouch_height - standing_height) / 2.0,
         Rotation::default(),
         crouching_collider,
     )]);
 
-    state.hand_collider = Collider::from(min_ledge_grab_space);
+    state.hand_collider = Collider::from(cfg.min_ledge_grab_space);
 }
 
 #[derive(Component, Clone, Reflect, Debug)]
