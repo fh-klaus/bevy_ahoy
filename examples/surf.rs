@@ -177,7 +177,7 @@ impl PlayerInput {
                 ),
                 (
                     Action::<Crouch>::new(),
-                    bindings![KeyCode::ControlLeft, GamepadButton::LeftTrigger],
+                    bindings![KeyCode::ControlLeft, GamepadButton::LeftTrigger2],
                 ),
                 (
                     Action::<YankCamera>::new(),
@@ -190,10 +190,9 @@ impl PlayerInput {
                 ),
                 (
                     Action::<RotateCamera>::new(),
-                    Scale::splat(0.05),
                     Bindings::spawn((
-                        Spawn(Binding::mouse_motion()),
-                        Axial::right_stick()
+                        Spawn((Binding::mouse_motion(), Scale::splat(0.05))),
+                        Axial::right_stick().with((Scale::splat(4.0), DeadZone::default())),
                     ))
                 ),
             ]));
