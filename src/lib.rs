@@ -328,7 +328,10 @@ pub struct CharacterControllerState {
     pub last_step_up: Stopwatch,
     pub last_step_down: Stopwatch,
     pub crane_height_left: Option<f32>,
-    pub mantle_progress: Option<MantleProgress>,
+    /// The current state of the mantle, if a mantle is in progress.
+    ///
+    /// This is [`None`] if a mantle is not in progress.
+    pub mantle: Option<MantleState>,
 }
 
 impl Default for CharacterControllerState {
@@ -345,17 +348,15 @@ impl Default for CharacterControllerState {
             last_step_up: max_stopwatch(),
             last_step_down: max_stopwatch(),
             crane_height_left: None,
-            mantle_progress: None,
+            mantle: None,
         }
     }
 }
 
-#[derive(Clone, Copy, Reflect, Debug)]
-pub struct MantleProgress {
-    pub wall_normal: Dir3,
-    pub ledge_position: Vec3,
+/// The state of a mantle in progress.
+#[derive(Clone, Reflect, Debug)]
+pub struct MantleState {
     pub height_left: f32,
-    pub wall_entity: Entity,
 }
 
 fn max_stopwatch() -> Stopwatch {
@@ -457,8 +458,25 @@ impl CharacterControllerDerivedProps {
 /// is also used as input in the next frame.
 #[derive(Component, Reflect, PartialEq, Debug, Default)]
 pub struct CharacterControllerOutput {
+    /// Details about an in progress mantle.
+    ///
+    /// This is [`None`] if a mantle is not in progress.
+    pub mantle: Option<MantleOutput>,
     /// The entities this character is touching.
     pub touching_entities: Vec<TouchingEntity>,
+}
+
+/// Properties computing while mantling.
+///
+/// These are properties about the mantle that are transient and are not needed for future updates.
+#[derive(Clone, Reflect, PartialEq, Debug)]
+pub struct MantleOutput {
+    /// The normal of the wall being mantled.
+    pub wall_normal: Dir3,
+    /// The position of the ledge on the wall.
+    pub ledge_position: Vec3,
+    /// The wall that is being mantled.
+    pub wall_entity: Entity,
 }
 
 /// Data related to a hit during [`MoveAndSlide::move_and_slide`].
