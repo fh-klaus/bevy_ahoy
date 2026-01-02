@@ -312,7 +312,11 @@ fn setup_collider(
 #[reflect(Component)]
 pub struct CharacterControllerState {
     pub orientation: Quat,
+    /// The velocity of the platform that the character is standing on (or has recently jumped off
+    /// of).
     pub platform_velocity: Vec3,
+    /// The angular velocity of the platform that the character is standing on (or has recently
+    /// jumped off of).
     pub platform_angular_velocity: Vec3,
     #[reflect(ignore)]
     pub standing_collider: Collider,
