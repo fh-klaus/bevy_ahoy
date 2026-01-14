@@ -80,16 +80,14 @@ fn main() -> AppExit {
             ),
             TrenchBroomPhysicsPlugin::new(AvianPhysicsBackend),
             ExampleUtilPlugin,
+            CheckpointPlugin,
         ))
         .add_input_context::<PlayerInput>()
         .insert_resource(ClearColor(tailwind::SKY_200.into()))
-        .init_resource::<Checkpoint>()
         .add_systems(Startup, (setup, setup_velocity_text))
         .add_observer(spawn_player)
         .add_observer(setup_time)
         .add_observer(reset_time)
-        .add_observer(save_checkpoint)
-        .add_observer(load_checkpoint)
         .add_systems(
             Update,
             (
@@ -124,7 +122,8 @@ fn setup(mut commands: Commands, assets: Res<AssetServer>) {
     CollisionLayers::new(
         [CollisionLayer::Player],
         LayerMask::ALL,
-    )
+    ),
+    CheckpointHistory
 )]
 struct Player;
 
@@ -365,6 +364,16 @@ fn update_velocity_text(
     text.0 = format!("{:.3}", velocity.xz().length());
 }
 
+pub struct CheckpointPlugin;
+
+impl Plugin for CheckpointPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_observer(save_checkpoint)
+            .add_observer(load_checkpoint)
+            .add_observer(reset_checkpoints);
+    }
+}
+
 #[derive(Debug, InputAction)]
 #[action_output(bool)]
 pub struct SaveCheckpoint;
@@ -373,8 +382,26 @@ pub struct SaveCheckpoint;
 #[action_output(bool)]
 pub struct LoadCheckpoint;
 
-#[derive(Clone, Debug, Reflect, Default, Resource)]
-#[reflect(Resource, Clone, Debug)]
+#[derive(Debug, InputAction)]
+#[action_output(bool)]
+pub struct ResetCheckpoints;
+
+#[derive(Clone, Debug, Reflect, Default, Component, DerefMut, Deref)]
+#[reflect(Component, Clone, Debug)]
+struct CheckpointHistory {
+    current: usize,
+    #[deref]
+    check_points: Vec<Checkpoint>,
+}
+
+impl CheckpointHistory {
+    pub fn get_current(&self) -> Option<&Checkpoint> {
+        self.check_points.get(self.current)
+    }
+}
+
+#[derive(Clone, Debug, Reflect, Default)]
+#[reflect(Clone, Debug)]
 struct Checkpoint {
     transform: Transform,
     velocity: LinearVelocity,
@@ -402,51 +429,67 @@ impl Checkpoint {
 }
 
 fn save_checkpoint(
-    _trigger: On<Start<SaveCheckpoint>>,
-    mut cmd: Commands,
-    player: Single<(&Transform, &LinearVelocity, &CharacterControllerState), With<Player>>,
+    _: On<Fire<SaveCheckpoint>>,
+    player: Single<
+        (
+            &Transform,
+            &LinearVelocity,
+            &CharacterControllerState,
+            &mut CheckpointHistory,
+        ),
+        With<Player>,
+    >,
     camera: Single<&Transform, (With<Camera3d>, Without<Player>)>,
     time: Single<&TimeText>,
 ) {
-    let (tf, velocity, state) = *player;
-    // Might wanna have a history instead of just the last one?
-    cmd.insert_resource(Checkpoint::new(
+    let (tf, velocity, state, mut checkpoint_history) = player.into_inner();
+    checkpoint_history.push(Checkpoint::new(
         *tf,
         *velocity,
         state.clone(),
         camera.rotation,
         (**time).clone(),
     ));
+    checkpoint_history.current = checkpoint_history.check_points.len() - 1;
     info!("Checkpoint saved!");
 }
 
 fn load_checkpoint(
-    _trigger: On<Start<LoadCheckpoint>>,
-    checkpoint: Option<Res<Checkpoint>>,
+    _: On<Fire<LoadCheckpoint>>,
     player: Single<
         (
             &mut Transform,
             &mut LinearVelocity,
             &mut CharacterControllerState,
+            &CheckpointHistory,
         ),
         With<Player>,
     >,
     mut camera: Single<&mut Transform, (With<Camera3d>, Without<Player>)>,
     mut time: Single<&mut TimeText>,
 ) {
-    let Some(cp) = checkpoint else {
+    let (mut transform, mut velocity, mut state, checkpoint_history) = player.into_inner();
+
+    let Some(check_point) = checkpoint_history.get_current() else {
         return;
     };
 
-    let (mut transform, mut velocity, mut state) = player.into_inner();
+    *transform = check_point.transform;
+    *velocity = check_point.velocity;
+    *state = check_point.state.clone();
+    camera.rotation = check_point.camera_rotation;
 
-    *transform = cp.transform;
-    *velocity = cp.velocity;
-    *state = cp.state.clone();
-    camera.rotation = cp.camera_rotation;
-
-    // not sure if we wanna track time at all if checkpoints/practice systems are active?
-    ***time = cp.time.clone();
+    ***time = check_point.time.clone();
 
     info!("Checkpoint loaded!");
+}
+
+fn reset_checkpoints(
+    reset: On<Fire<util::Reset>>,
+    player: Single<(Entity, &mut CheckpointHistory), With<Player>>,
+) {
+    let (entity, mut history) = player.into_inner();
+    if reset.context.entity() == entity {
+        history.clear();
+    }
 }
