@@ -16,7 +16,7 @@ pub mod prelude {
     };
 
     pub use crate::{
-        AhoyPlugins, AhoySystems, CharacterController, PickupConfig,
+        AhoyPlugins, AhoySystems, CharacterController, CharacterControllerState, PickupConfig,
         camera::{CharacterControllerCamera, CharacterControllerCameraOf},
         input::{
             Climbdown, Crane, Crouch, DropObject, GlobalMovement, Jump, Mantle, Movement,
