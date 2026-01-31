@@ -642,6 +642,7 @@ fn available_ledge_height(
         return None;
     };
     ctx.transform.translation += cast_dir * cast_len;
+    let ledge_pos = ctx.transform.translation;
 
     let cast_dir = Dir3::NEG_Y;
     let cast_len = ledge_height;
@@ -656,6 +657,10 @@ fn available_ledge_height(
     if hit.normal1.y < ctx.cfg.min_walk_cos {
         return None;
     }
+
+    // If we can get to the end pos without any hits, this is just a regular old slope on the ground.
+    let end_pos = ledge_pos + cast_dir * hit.distance;
+    cast_move(end_pos - ctx.transform.translation, move_and_slide, ctx)?;
 
     Some(ledge_height)
 }
