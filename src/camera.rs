@@ -1,6 +1,5 @@
 use std::{f32::consts::TAU, time::Duration};
 
-use avian_pickup::actor::AvianPickupActor;
 use bevy_ecs::{lifecycle::HookContext, relationship::Relationship, world::DeferredWorld};
 
 use crate::{
@@ -30,7 +29,7 @@ impl Plugin for AhoyCameraPlugin {
 
 #[derive(Component, Clone, Copy, Debug)]
 #[relationship(relationship_target = CharacterControllerCamera)]
-#[require(AvianPickupActor, Transform)]
+#[require(Transform)]
 #[component(on_add = Self::on_add)]
 pub struct CharacterControllerCameraOf {
     #[relationship]

@@ -1,4 +1,3 @@
-use avian_pickup::input::{AvianPickupAction, AvianPickupInput};
 use bevy_time::Stopwatch;
 
 use crate::CharacterControllerState;
@@ -17,9 +16,6 @@ impl Plugin for AhoyInputPlugin {
             .add_observer(apply_tac)
             .add_observer(apply_crouch)
             .add_observer(apply_swim_up)
-            .add_observer(apply_drop)
-            .add_observer(apply_pull)
-            .add_observer(apply_throw)
             .add_observer(apply_crane)
             .add_observer(apply_mantle)
             .add_observer(apply_climbdown)
@@ -174,54 +170,6 @@ fn apply_climbdown(
     if let Ok(mut accumulated_inputs) = accumulated_inputs.get_mut(climbdown.context) {
         accumulated_inputs.climbdown = Some(Stopwatch::new());
     }
-}
-
-fn apply_pull(
-    crouch: On<Fire<PullObject>>,
-    mut avian_pickup_input_writer: MessageWriter<AvianPickupInput>,
-    cams: Query<&CharacterControllerCamera>,
-) {
-    let actor = if let Ok(camera) = cams.get(crouch.context) {
-        camera.get()
-    } else {
-        crouch.context
-    };
-    avian_pickup_input_writer.write(AvianPickupInput {
-        action: AvianPickupAction::Pull,
-        actor,
-    });
-}
-
-fn apply_drop(
-    crouch: On<Fire<DropObject>>,
-    mut avian_pickup_input_writer: MessageWriter<AvianPickupInput>,
-    cams: Query<&CharacterControllerCamera>,
-) {
-    let actor = if let Ok(camera) = cams.get(crouch.context) {
-        camera.get()
-    } else {
-        crouch.context
-    };
-    avian_pickup_input_writer.write(AvianPickupInput {
-        action: AvianPickupAction::Drop,
-        actor,
-    });
-}
-
-fn apply_throw(
-    crouch: On<Fire<ThrowObject>>,
-    mut avian_pickup_input_writer: MessageWriter<AvianPickupInput>,
-    cams: Query<&CharacterControllerCamera>,
-) {
-    let actor = if let Ok(camera) = cams.get(crouch.context) {
-        camera.get()
-    } else {
-        crouch.context
-    };
-    avian_pickup_input_writer.write(AvianPickupInput {
-        action: AvianPickupAction::Throw,
-        actor,
-    });
 }
 
 fn clear_accumulated_input(mut accumulated_inputs: Query<&mut AccumulatedInput>) {
