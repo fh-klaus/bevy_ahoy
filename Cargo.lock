@@ -323,10 +323,10 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 [[package]]
 name = "avian3d"
 version = "0.6.0-dev"
-source = "git+https://github.com/avianphysics/avian#cbc9a2144ba75da3169fbc8a48e5283fe7f805a2"
+source = "git+https://github.com/avianphysics/avian?rev=cbc9a21#cbc9a2144ba75da3169fbc8a48e5283fe7f805a2"
 dependencies = [
  "approx",
- "avian_derive",
+ "avian_derive 0.2.2 (git+https://github.com/avianphysics/avian?rev=cbc9a21)",
  "bevy",
  "bevy_heavy",
  "bevy_math",
@@ -346,9 +346,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "avian3d"
+version = "0.6.0-dev"
+source = "git+https://github.com/avianphysics/avian#1a1c5d5f3f66f15ac03ec6555ec149cbff31f461"
+dependencies = [
+ "approx",
+ "avian_derive 0.2.2 (git+https://github.com/avianphysics/avian)",
+ "bevy",
+ "bevy_heavy",
+ "bevy_math",
+ "bevy_transform_interpolation",
+ "bitflags 2.10.0",
+ "derive_more",
+ "disqualified",
+ "glam_matrix_extras",
+ "itertools 0.13.0",
+ "nalgebra",
+ "parry3d",
+ "slab",
+ "smallvec",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "avian_derive"
 version = "0.2.2"
-source = "git+https://github.com/avianphysics/avian#cbc9a2144ba75da3169fbc8a48e5283fe7f805a2"
+source = "git+https://github.com/avianphysics/avian?rev=cbc9a21#cbc9a2144ba75da3169fbc8a48e5283fe7f805a2"
+dependencies = [
+ "proc-macro-error2",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "avian_derive"
+version = "0.2.2"
+source = "git+https://github.com/avianphysics/avian#1a1c5d5f3f66f15ac03ec6555ec149cbff31f461"
 dependencies = [
  "proc-macro-error2",
  "proc-macro2",
@@ -361,7 +395,7 @@ name = "avian_pickup"
 version = "0.5.0-dev"
 source = "git+https://github.com/janhohenheim/avian_pickup#76acb65961213d0a30013429db4fdda8eb2ea8cb"
 dependencies = [
- "avian3d",
+ "avian3d 0.6.0-dev (git+https://github.com/avianphysics/avian)",
  "bevy_app",
  "bevy_ecs",
  "bevy_log",
@@ -407,7 +441,7 @@ dependencies = [
 name = "bevy_ahoy"
 version = "0.0.3"
 dependencies = [
- "avian3d",
+ "avian3d 0.6.0-dev (git+https://github.com/avianphysics/avian?rev=cbc9a21)",
  "avian_pickup",
  "bevy",
  "bevy_app",
@@ -1197,7 +1231,7 @@ checksum = "7ef8e4b7e61dfe7719bb03c884dc270cd46a82efb40f93e9933b990c5c190c59"
 [[package]]
 name = "bevy_mod_mipmap_generator"
 version = "0.1.0"
-source = "git+https://github.com/DGriffin91/bevy_mod_mipmap_generator#f0d676ba4b41776f3740e1b7e379cdaeb4c52d68"
+source = "git+https://github.com/DGriffin91/bevy_mod_mipmap_generator#a763a0a4715268a8735878476bdbe16f77579104"
 dependencies = [
  "anyhow",
  "bevy",
@@ -1674,7 +1708,7 @@ name = "bevy_trenchbroom_avian"
 version = "0.13.0-dev"
 source = "git+https://github.com/janhohenheim/bevy_trenchbroom?branch=avian-0.6#dd52cf42f8b02800605f6c08ab0ea635b46103c8"
 dependencies = [
- "avian3d",
+ "avian3d 0.6.0-dev (git+https://github.com/avianphysics/avian)",
  "bevy",
  "bevy_trenchbroom",
 ]
@@ -1928,9 +1962,9 @@ checksum = "5dd9dc738b7a8311c7ade152424974d8115f2cdad61e8dab8dac9f2362298510"
 
 [[package]]
 name = "bytemuck"
-version = "1.24.0"
+version = "1.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fbdf580320f38b612e485521afda1ee26d10cc9884efaaa750d383e13e3c5f4"
+checksum = "c8efb64bd706a16a1bdde310ae86b351e4d21550d98d056f22f8a7f7a2183fec"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -1992,9 +2026,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.54"
+version = "1.2.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6354c81bbfd62d9cfa9cb3c773c2b7b2a3a482d569de977fd0e961f6e7c00583"
+checksum = "47b26a0954ae34af09b50f0de26458fa95369a0d478d8236d3f93082b219bd29"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -2705,9 +2739,9 @@ dependencies = [
 
 [[package]]
 name = "find-msvc-tools"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8591b0bcc8a98a64310a2fae1bb3e9b8564dd10e381e6e28010fde8e8e8568db"
+checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
 name = "fixedbitset"
@@ -4538,15 +4572,15 @@ dependencies = [
 
 [[package]]
 name = "portable-atomic"
-version = "1.13.0"
+version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f89776e4d69bb58bc6993e99ffa1d11f228b839984854c7daeb5d37f87cbe950"
+checksum = "c33a9471896f1c69cecef8d20cbe2f7accd12527ce60845ff44c153bb2a21b49"
 
 [[package]]
 name = "portable-atomic-util"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8a2f0d8d040d7848a709caf78912debcc3f33ee4b3cac47d73d1e1069e83507"
+checksum = "7a9db96d7fa8782dd8c15ce32ffe8680bbd1e978a43bf51a34d39483540495f5"
 dependencies = [
  "portable-atomic",
 ]
@@ -5126,9 +5160,9 @@ dependencies = [
 
 [[package]]
 name = "slab"
-version = "0.4.11"
+version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a2ae44ef20feb57a68b23d846850f861394c2e02dc425a50098ae8c90267589"
+checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
 name = "slotmap"
@@ -6797,18 +6831,18 @@ checksum = "6df3dc4292935e51816d896edcd52aa30bc297907c26167fec31e2b0c6a32524"
 
 [[package]]
 name = "zerocopy"
-version = "0.8.35"
+version = "0.8.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdea86ddd5568519879b8187e1cf04e24fce28f7fe046ceecbce472ff19a2572"
+checksum = "7456cf00f0685ad319c5b1693f291a650eaf345e941d082fc4e03df8a03996ac"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.8.35"
+version = "0.8.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c15e1b46eff7c6c91195752e0eeed8ef040e391cdece7c25376957d5f15df22"
+checksum = "1328722bbf2115db7e19d69ebcc15e795719e2d66b60827c6a69a117365e37a0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6817,9 +6851,9 @@ dependencies = [
 
 [[package]]
 name = "zmij"
-version = "1.0.17"
+version = "1.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02aae0f83f69aafc94776e879363e9771d7ecbffe2c7fbb6c14c5e00dfe88439"
+checksum = "3ff05f8caa9038894637571ae6b9e29466c1f4f829d26c9b28f869a29cbe3445"
 
 [[package]]
 name = "zune-core"
@@ -6829,9 +6863,9 @@ checksum = "cb8a0807f7c01457d0379ba880ba6322660448ddebc890ce29bb64da71fb40f9"
 
 [[package]]
 name = "zune-jpeg"
-version = "0.5.11"
+version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2959ca473aae96a14ecedf501d20b3608d2825ba280d5adb57d651721885b0c2"
+checksum = "410e9ecef634c709e3831c2cfdb8d9c32164fae1c67496d5b68fff728eec37fe"
 dependencies = [
  "zune-core",
 ]

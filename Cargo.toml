@@ -12,7 +12,7 @@ categories = ["game-development"]
 include = ["/src", "/license*", "/examples"]
 
 [dependencies]
-avian3d = { version = "0.6.0-dev", default-features = false, features = ["default-collider", "3d", "f32"], git = "https://github.com/avianphysics/avian" }
+avian3d = { version = "0.6.0-dev", default-features = false, features = ["default-collider", "3d", "f32", "parry-f32"], git = "https://github.com/avianphysics/avian", rev="cbc9a21" }
 bevy_ecs = { version = "0.18", default-features = false }
 bevy_app = { version = "0.18", default-features = false }
 bevy_derive = { version = "0.18", default-features = false }
@@ -30,7 +30,7 @@ bevy = { version = "0.18", features = ["track_location", "dynamic_linking", "fil
 bevy_trenchbroom = { version = "0.12.0", git = "https://github.com/janhohenheim/bevy_trenchbroom", branch = "avian-0.6" }
 bevy_trenchbroom_avian = { version = "0.13.0-dev", git = "https://github.com/janhohenheim/bevy_trenchbroom", branch = "avian-0.6" }
 bevy_mod_mipmap_generator = { version = "0.1.0", git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator" }
-avian3d = { version = "0.6.0-dev", git = "https://github.com/avianphysics/avian" }
+avian3d = { version = "0.6.0-dev", git = "https://github.com/avianphysics/avian", rev = "cbc9a21" }
 bevy_framepace = { version = "0.21.0", git = "https://github.com/aevyrie/bevy_framepace" }
 bevy_fix_cursor_unlock_web = "0.3.0"
 wasm-bindgen = "=0.2.108"
